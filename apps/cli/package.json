@@ -8,6 +8,7 @@
     ".": "./src/main.ts"
   },
   "dependencies": {
+    "@cabinet/ai": "workspace:*",
     "@cabinet/core": "workspace:*",
     "@cabinet/mcp": "workspace:*",
     "@cabinet/server": "workspace:*"
