@@ -1,7 +1,8 @@
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { startServer } from '../apps/server/src/server.ts';
 import { createTelegramBot, telegramPlugin } from '../apps/server/src/telegram.ts';
-import { blockInternet, tempLibrary } from './helpers.ts';
+import { blockInternet, SHOTS, tempLibrary } from './helpers.ts';
 
 // Exercise the real web app, Settings routes and polling lifecycle without
 // contacting Telegram or requiring a personal bot token.
@@ -45,6 +46,7 @@ test('Telegram settings: enable, pair, refresh status, revoke and disable', asyn
     await expect(page.locator('p').filter({ hasText: `/pair ${code}` })).toContainText('private chat');
     await bot!.handleUpdate({ update_id: 1, message: { message_id: 1, date: 0, chat: { id: 42, type: 'private', first_name: 'Tester' }, from: { id: 42, is_bot: false, first_name: 'Tester' }, text: `/pair ${code}`, entities: [{ type: 'bot_command', offset: 0, length: 5 }] } } as Parameters<NonNullable<typeof bot>['handleUpdate']>[0]);
     await expect(page.locator('li').filter({ hasText: 'Chat 42' })).toBeVisible();
+    await page.locator('section').filter({ has: page.getByTestId('telegram-status') }).screenshot({ path: join(SHOTS, '13-telegram.png') });
     // Editing other settings must not clear newly paired chats or unsaved fields.
     await page.getByLabel('Chat model (Ollama)', { exact: true }).fill('unsaved-local-choice');
     await page.waitForResponse((r) => r.url().endsWith('/api/settings/telegram'));

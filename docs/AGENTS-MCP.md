@@ -5,7 +5,7 @@ Cabinet is an MCP server, so any MCP-capable agent can use your library as memor
 | Transport | For | Auth | Git author |
 | --- | --- | --- | --- |
 | **stdio** (`cabinet mcp`) | Agents on the same computer: Claude Code, Claude Desktop, Cursor, … | None. The agent runs Cabinet as a subprocess with direct file access. | `agent:<--agent name>` |
-| **Streamable HTTP** (`/mcp`) | Agents elsewhere: another machine, a server, a phone app | A per-agent bearer token from **Settings → Agents** (or `cabinet token <name>`) | `agent:<token name>` |
+| **Streamable HTTP** (`/mcp`) | Agents elsewhere: another machine, a server, a phone app | A per-agent bearer token from **Settings → Agents** (or `cabinet token <name>`; restart an already running server after creating tokens from the CLI) | `agent:<token name>` |
 
 Every change an agent makes is a normal git commit in your library with the agent as author, so `git log --author=agent:` shows exactly what agents did and `git revert` undoes it.
 
@@ -45,11 +45,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Use the absolute path to Node 24+ (Desktop doesn't load your shell's PATH).
+Use the absolute path to Node 24.12 or newer; Node 26 is recommended. Desktop doesn't load your shell's PATH.
 
 ## Remote agents over HTTP
 
-1. Allow network access in **Settings → Access** and set a passphrase (or run Cabinet behind Tailscale).
+1. Allow network access in **Settings → Access** and set a passphrase. Tailscale does not bypass Cabinet authentication.
 2. Create a token in **Settings → Agents**. It's shown once.
 3. Point the agent at `http(s)://<host>:4747/mcp` with `Authorization: Bearer cab_…`:
 
@@ -87,3 +87,5 @@ Every item is also an MCP resource at `cabinet://item/{id}` (Markdown).
 ## Agents with plain file access
 
 Agents that can read files but don't speak MCP can read `AGENTS.md` at the root of the library. It explains the folder layout, frontmatter and linking conventions. Changes they make on disk are picked up by Cabinet's file watcher and committed as `you`.
+
+For containers, use the same HTTP transport with a token from Settings. Docker browser access needs an initial passphrase set through the CLI; see [Setup](SETUP.md#docker). Do not add real bearer tokens to committed example files.

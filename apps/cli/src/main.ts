@@ -26,6 +26,7 @@ Commands:
   restore <file.zip>    Restore a library from an export (current one is moved aside)
   token <name>          Create an access token for an agent (MCP over HTTP / API)
   tokens                List tokens
+  passphrase            Set the library passphrase (hidden prompt, or --stdin)
   path [newPath]        Show or set the default library path
 
 Options:
@@ -52,6 +53,7 @@ async function main() {
       agent: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
       quiet: { type: 'boolean', short: 'q' },
+      stdin: { type: 'boolean' },
     },
   });
   const [cmd = 'help', ...rest] = positionals;
@@ -141,6 +143,21 @@ async function main() {
       const t = new Auth(lib).createToken(rest[0] ?? 'agent');
       await lib.close();
       console.log(`Token for agent "${t.name}" (shown once):\n\n  ${t.token}\n`);
+      return;
+    }
+
+    case 'passphrase': {
+      const { readPassphrase } = await import('./passphrase.ts');
+      const { Auth } = await import('@cabinet/server');
+      const passphrase = await readPassphrase(values.stdin ?? false);
+      if (passphrase.length < 8) throw new Error('Use at least 8 characters');
+      const lib = await Library.open(library, { git: false });
+      try {
+        new Auth(lib).setPassphrase(passphrase);
+        console.log('Passphrase saved. Restart any running Cabinet server to use it.');
+      } finally {
+        await lib.close();
+      }
       return;
     }
 

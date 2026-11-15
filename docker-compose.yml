@@ -1,0 +1,21 @@
+services:
+  cabinet:
+    build: .
+    image: cabinet:local
+    init: true
+    restart: unless-stopped
+    user: "${CABINET_UID:-1000}:${CABINET_GID:-1000}"
+    ports:
+      - "127.0.0.1:${CABINET_PORT:-4747}:4747"
+    volumes:
+      # Mount the parent: restore moves Cabinet to a sibling backup directory.
+      - type: bind
+        source: ${CABINET_DATA_DIR:-${HOME}/CabinetData}
+        target: /data
+      - type: bind
+        source: ${CABINET_WHISPER_MODELS_DIR:-${HOME}/.cache/cabinet/whisper}
+        target: /models
+        read_only: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stop_grace_period: 30s

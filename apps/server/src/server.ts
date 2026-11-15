@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { Library } from '@cabinet/core';
 import { createApp } from './app.ts';
@@ -37,7 +37,7 @@ export interface RunningServer {
 export const VERSION = '0.1.0';
 
 export function defaultWebDist(): string | null {
-  const p = resolve(new URL('../../web/dist', import.meta.url).pathname);
+  const p = fileURLToPath(new URL('../../web/dist', import.meta.url));
   return existsSync(p) ? p : null;
 }
 

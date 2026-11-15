@@ -71,7 +71,7 @@ cabinet/
   - When the app renames a file, it rewrites the links pointing to it.
   - Tag and collection membership lives in the item's frontmatter.
   - A project's material lives in its body under `## Material`. `###` headings are sections, and each list line is `- [[slug]]: per-project context`. Notes, Questions and Checklist (`- [ ]`) are further sections. No content is ever duplicated.
-- **Index:** items, links, tags, an FTS table (title, why, body, content, tags), chunks and embeddings, and pending AI suggestions. All of it is regenerable.
+- **Index:** items, links, tags, an FTS table (title, why, body, content, tags), chunks and embeddings are derived from the files and regenerable. Chats, pending AI suggestions, digests and interaction state live separately in `.cabinet/state.sqlite`; this local app state is not reconstructable exactly from Markdown.
 
 ## Signature flow: paste → context → connected
 1. Paste anywhere: global `⌘V` on any screen with no input focused (URLs, images, text, files); also `⌘K`, "+", Telegram or MCP.
@@ -133,7 +133,9 @@ Target: paste to saved in under 3 seconds, no required fields.
 - Milestones 0–8: implemented in the existing milestone commits.
 - **Milestone 9: implemented and locally verified.** Telegram private-chat pairing, chat allowlist/revocation, text/link/photo/PDF/audio/voice capture, `/search`, `/ask`, live Settings status, polling lifecycle and local whisper.cpp transcription. Setup: `docs/TELEGRAM.md`.
 - Verification at milestone 9: **77 Vitest tests passed**, including real OGG → ffmpeg → Whisper → searchable library text; the Telegram Settings Playwright test passed; lint, typecheck and web build passed. Telegram API calls and AI command responses use mocks in these new tests. Real phone/BotFather delivery remains unverified; no personal bot token was supplied.
-- **Next: milestone 10.** Dockerfile/Compose, launchd service, SETUP/STORAGE/LIMITATIONS docs, finished README, final screenshots and packaging verification. The folder is already named `cabinet`.
+- **Milestone 10: implemented and verified.** Multi-stage Docker image (Node, built web app, Git, ffmpeg, whisper.cpp), Compose with external parent data/model mounts and non-root UID mapping, first-passphrase CLI, launchd plist/renderer, complete README and SETUP/STORAGE/LIMITATIONS/MCP guides, and 13 documented screenshots. The folder is already named `cabinet`.
+- Final verification: **80 Vitest tests and 11 Playwright browser flows passed**, plus lint, typecheck and production web build. Linux ARM64 container smoke passed for empty/sample libraries, authentication, captures/search, native image/PDF processing, MCP HTTP, real OGG transcription, restart persistence and export/restore. The documented Compose init/passphrase/start/login flow passed. The launchd template was rendered/linted and the hidden passphrase prompt was checked in a real terminal. No persistent service was installed.
+- **Milestones 0–10 are complete.** Remaining owner setup/verification: optional live BotFather/phone delivery, hosted provider keys/models, and installing a chosen background service. Native Windows/Linux-host, Linux AMD64 containers and long-running unattended operation are not verified; see `docs/LIMITATIONS.md`.
 
 ## Verification
 - **Vitest:** format round-trip, link/backlink resolution, rebuild == live index, conflict detection, export → restore byte-identical, MCP via in-memory client, offline search with match labels.

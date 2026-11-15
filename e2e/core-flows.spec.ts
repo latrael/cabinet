@@ -29,7 +29,12 @@ test.beforeEach(async ({ page }) => {
   await blockInternet(page);
 });
 
-const shot = (page: Page, name: string) => page.screenshot({ path: join(SHOTS, name) });
+const shot = (page: Page, name: string) => page.screenshot({
+  path: join(SHOTS, name),
+  // Keep transient capture notifications out of documentation images. The
+  // Settings shot intentionally retains its successful-rebuild confirmation.
+  style: name === '12-settings.png' ? '' : '[role="status"] { visibility: hidden !important; }',
+});
 
 async function waitIdle(base: string) {
   for (let i = 0; i < 60; i++) {
