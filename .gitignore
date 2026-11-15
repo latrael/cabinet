@@ -10,3 +10,6 @@ apps/web/dist/
 .env
 .env.*
 !.env.example
+*.tsbuildinfo
+PLAN.md
+docs/MEMORY-PLAN.md
