@@ -190,9 +190,13 @@ describe('capture pipeline', () => {
       json: { url: fx.url + '/article-2', projectId: p.id, section: 'Lighting', context: 'the lamp height idea' },
     });
     expect(r.data.item.status).toBe('library');
+    await srv.ctx.jobs.idle();
     const model = parseProject((await api('/api/items/reading-corner')).data.item.body);
     const lighting = model.material.find((s) => s.name === 'Lighting')!;
-    expect(lighting.lines.at(-1)).toMatchObject({ target: r.data.item.slug, context: 'the lamp height idea' });
+    const last = lighting.lines.at(-1) as any;
+    expect(last.context).toBe('the lamp height idea');
+    // the background fetch may already have renamed the file; the link follows it
+    expect((await api('/api/resolve?ref=' + encodeURIComponent(last.target))).data.id).toBe(r.data.item.id);
     await srv.ctx.jobs.idle();
     // the item still lives once, in sources/
     expect(r.data.item.path.startsWith('sources/')).toBe(true);

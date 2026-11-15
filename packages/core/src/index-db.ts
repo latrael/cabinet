@@ -74,12 +74,17 @@ export function rowToSummary(r: Row): ItemSummary {
 }
 
 /** Turn free text into a safe FTS5 query: every token quoted, last one prefix-matched. */
+const STOPWORDS = new Set(
+  'a an and are as at be but by can do does for from how i if in into is it its me my of on or our so than that the their them then there these they this to was we what when where which who why will with you your about have has had not no make makes made get'.split(' '),
+);
+
 export function ftsQuery(input: string, mode: 'and' | 'or' = 'and'): string | null {
-  const tokens = input
+  const all = input
     .normalize('NFKC')
     .split(/[^\p{L}\p{N}_]+/u)
-    .filter((t) => t.length > 0)
-    .slice(0, 12);
+    .filter((t) => t.length > 0);
+  const meaningful = all.filter((t) => !STOPWORDS.has(t.toLowerCase()));
+  const tokens = (meaningful.length ? meaningful : all).slice(0, 12);
   if (!tokens.length) return null;
   const parts = tokens.map((t, i) => `"${t.replace(/"/g, '')}"${i === tokens.length - 1 && t.length >= 2 ? '*' : ''}`);
   return parts.join(mode === 'and' ? ' ' : ' OR ');

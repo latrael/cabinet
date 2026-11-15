@@ -53,7 +53,7 @@ export function defaultConfig(name = 'Cabinet'): LibraryConfig {
       ollamaUrl: 'http://127.0.0.1:11434',
       chatModel: 'qwen3:8b',
       embedModel: 'nomic-embed-text',
-      anthropicModel: 'claude-sonnet-5-5',
+      anthropicModel: 'claude-opus-5-5',
       openaiModel: 'gpt-5.1-mini',
       openaiEmbedModel: 'text-embedding-3-small',
       enrichOnCapture: true,
