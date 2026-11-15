@@ -33,6 +33,10 @@ export function settingsRoutes(ctx: ServerContext) {
   };
 
   r.get('/', async (c) => c.json(await view()));
+  r.get('/telegram', (c) => c.json({
+    ...(ctx.extras.telegram?.status?.() ?? { running: false }),
+    allowedChats: ctx.lib.config.telegram.allowedChats,
+  }));
 
   r.put('/', async (c) => {
     const patch = await c.req.json<Partial<LibraryConfig>>();

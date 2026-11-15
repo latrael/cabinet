@@ -81,6 +81,7 @@ function Snippet({ text }: { text: string }) {
 export function SettingsPage() {
   const qc = useQueryClient();
   const s = useQuery({ queryKey: ['settings'], queryFn: () => api<SettingsData>('/api/settings') });
+  const telegram = useQuery({ queryKey: ['telegram-status'], queryFn: () => api<SettingsData['telegram'] & { allowedChats: number[] }>('/api/settings/telegram'), refetchInterval: 5000 });
   const ai = useQuery({ queryKey: ['ai-status'], queryFn: () => api<any>('/api/ai/status'), refetchInterval: 15_000 });
   const commits = useQuery({ queryKey: ['git-log'], queryFn: () => api<{ commits: Array<{ hash: string; date: string; author: string; message: string }> }>('/api/settings/git/log') });
   const [cfg, setCfg] = useState<any>(null);
@@ -98,6 +99,7 @@ export function SettingsPage() {
   }, [s.data]);
   if (!s.data || !cfg) return <Loader2 className="animate-spin text-faded" />;
   const d = s.data;
+  const tg = telegram.data ?? { ...d.telegram, allowedChats: cfg.telegram.allowedChats };
 
   const saveConfig = async (patch: any) => {
     try {
@@ -327,15 +329,15 @@ export function SettingsPage() {
 
       <Block title="Telegram" desc="Send links, photos, PDFs, text and voice notes to your cabinet from your phone. Voice notes are transcribed on this computer.">
         <div className="text-[13.5px]" data-testid="telegram-status">
-          {d.telegram.running ? (
-            <span className="text-lamp">Bot running{d.telegram.username ? ` as @${d.telegram.username}` : ''}.</span>
+          {tg.running ? (
+            <span className="text-lamp">Bot running{tg.username ? ` as @${tg.username}` : ''}.</span>
           ) : (
-            <span className="text-faded">Bot not running{d.telegram.error ? `: ${d.telegram.error}` : ''}.</span>
+            <span className="text-faded">Bot not running{tg.error ? `: ${tg.error}` : ''}.</span>
           )}{' '}
           <span className="text-faded">Transcription: {d.transcription.ok ? 'ready (whisper.cpp)' : `unavailable${d.transcription.reason ? ` (${d.transcription.reason})` : ''}`}.</span>
         </div>
         <SecretField label="Bot token from @BotFather" isSet={d.secrets.telegramToken} onSave={saveSecret('telegramToken')} placeholder="123456:ABC…" />
-        <Toggle checked={cfg.telegram.enabled} onChange={(v) => saveConfig({ telegram: { ...cfg.telegram, enabled: v } })} label="Enable the bot" />
+        <Toggle checked={cfg.telegram.enabled} onChange={(v) => saveConfig({ telegram: { enabled: v } })} label="Enable the bot" />
         <div>
           <button
             className="btn"
@@ -348,19 +350,20 @@ export function SettingsPage() {
           </button>
           {pairing && (
             <p className="mt-2 text-[14px]">
-              Send <code className="rounded bg-paper-deep px-1.5 py-0.5 font-semibold">/pair {pairing}</code> to your bot within 10 minutes.
+              Send <code className="rounded bg-paper-deep px-1.5 py-0.5 font-semibold">/pair {pairing}</code> to your bot in a private chat within 10 minutes.
             </p>
           )}
         </div>
-        {cfg.telegram.allowedChats.length > 0 && (
+        {tg.allowedChats.length > 0 && (
           <ul className="text-[14px]">
-            {cfg.telegram.allowedChats.map((c: number) => (
+            {tg.allowedChats.map((c: number) => (
               <li key={c} className="flex items-center gap-2 border-b border-rule py-1.5">
                 Chat {c}
                 <button
                   className="btn btn-sm btn-quiet btn-danger ml-auto"
                   onClick={async () => {
                     qc.setQueryData(['settings'], await api(`/api/settings/telegram/chats/${c}`, { method: 'DELETE' }));
+                    qc.invalidateQueries({ queryKey: ['telegram-status'] });
                   }}
                 >
                   Remove

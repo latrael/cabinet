@@ -129,6 +129,12 @@ Target: paste to saved in under 3 seconds, no required fields.
 9. Telegram bot plus whisper.cpp transcription.
 10. Dockerfile, compose, launchd plist, docs (SETUP, STORAGE, MCP, LIMITATIONS), final screenshots. Rename `hobbyhub` → `cabinet` last.
 
+## Progress (2026-11-14)
+- Milestones 0–8: implemented in the existing milestone commits.
+- **Milestone 9: implemented and locally verified.** Telegram private-chat pairing, chat allowlist/revocation, text/link/photo/PDF/audio/voice capture, `/search`, `/ask`, live Settings status, polling lifecycle and local whisper.cpp transcription. Setup: `docs/TELEGRAM.md`.
+- Verification at milestone 9: **77 Vitest tests passed**, including real OGG → ffmpeg → Whisper → searchable library text; the Telegram Settings Playwright test passed; lint, typecheck and web build passed. Telegram API calls and AI command responses use mocks in these new tests. Real phone/BotFather delivery remains unverified; no personal bot token was supplied.
+- **Next: milestone 10.** Dockerfile/Compose, launchd service, SETUP/STORAGE/LIMITATIONS docs, finished README, final screenshots and packaging verification. The folder is already named `cabinet`.
+
 ## Verification
 - **Vitest:** format round-trip, link/backlink resolution, rebuild == live index, conflict detection, export → restore byte-identical, MCP via in-memory client, offline search with match labels.
 - **Playwright** against a temp copy of the sample library (screenshots to `docs/screenshots/`): paste-capture flow under 3s; article/quote/PDF/video capture; note with backlinks; graph; hand-made project with paste, gather, sections, reorder and Markdown check; restart; external edit + conflict; offline search; rebuild; export/restore.

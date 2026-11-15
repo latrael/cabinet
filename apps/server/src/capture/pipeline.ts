@@ -374,6 +374,8 @@ export class CapturePipeline {
       this.lib.emit('error-log', e);
     }
     const cur = this.lib.read(id);
+    // Manual content supplied while Whisper was running takes precedence.
+    if (cur.frontmatter.extraction === 'manual') return;
     const fm: Record<string, unknown> = { extraction: text.trim() ? 'ok' : 'failed' };
     if (text.trim() && cur.title.startsWith('Voice note')) fm.title = firstWords(text, 8);
     const body = text.trim() ? setSection(cur.body, 'Content', text.trim()) : cur.body;
