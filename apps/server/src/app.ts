@@ -134,6 +134,11 @@ export function createApp(ctx: ServerContext) {
         alive = false;
         wake?.();
       });
+      // When the library is swapped (restore), end the stream so the browser reconnects.
+      lib.once('closed', () => {
+        alive = false;
+        wake?.();
+      });
       await stream.writeSSE({ event: 'hello', data: JSON.stringify({ version: ctx.version }) });
       while (alive) {
         if (!queue.length) {

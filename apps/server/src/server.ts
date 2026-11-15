@@ -78,7 +78,22 @@ export async function buildContext(opts: StartOptions): Promise<ServerContext> {
   return ctx;
 }
 
+/** Simulate having no internet: only loopback hosts can be fetched (used by offline tests). */
+export function blockOutboundNetwork() {
+  const real = globalThis.fetch;
+  if ((real as any).__cabinetBlocked) return;
+  const blocked: typeof fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const host = new URL(url).hostname;
+    if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(host)) return Promise.reject(new TypeError(`network blocked: ${host}`));
+    return real(input, init);
+  };
+  (blocked as any).__cabinetBlocked = true;
+  globalThis.fetch = blocked;
+}
+
 export async function startServer(opts: StartOptions): Promise<RunningServer> {
+  if (process.env.CABINET_BLOCK_NETWORK === '1') blockOutboundNetwork();
   const ctx = await buildContext(opts);
   const stops: Array<() => Promise<void>> = [];
   for (const p of opts.plugins ?? []) {

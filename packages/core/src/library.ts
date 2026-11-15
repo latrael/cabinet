@@ -138,6 +138,7 @@ export class Library extends EventEmitter {
   async close() {
     if (this.closed) return;
     this.closed = true;
+    this.emit('closed');
     await this.watcher?.stop();
     await this.git?.close();
     this.index.close();

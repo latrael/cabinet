@@ -490,8 +490,8 @@ export class LibraryIndex {
         field = summary.type === 'pdf' ? 'pdf' : 'content';
         snippet = r.s_content ?? '';
       }
-      return { item: summary, score: -r.score, field, snippet: cleanSnippet(snippet) };
-    });
+      return { item: summary, score: -r.score + titleBoost(query, summary.title), field, snippet: cleanSnippet(snippet) };
+    }).sort((a, b) => b.score - a.score);
   }
 
   /** A stable dump of the logical index contents, for rebuild-equality tests. */
@@ -504,6 +504,18 @@ export class LibraryIndex {
     const tags = (this.db.prepare('SELECT item_id, tag FROM tags ORDER BY item_id, tag').all() as Row[]).map((r) => ({ ...r }));
     return { items, links, keys, tags };
   }
+}
+
+/** Exact-phrase and all-words title matches outrank body matches. */
+function titleBoost(query: string, title: string): number {
+  const q = query.trim().toLowerCase();
+  const t = title.toLowerCase();
+  if (!q) return 0;
+  if (t === q) return 100;
+  if (t.includes(q)) return 50;
+  const words = q.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 1);
+  if (words.length && words.every((w) => t.includes(w))) return 20;
+  return 0;
 }
 
 function cleanSnippet(s: string): string {

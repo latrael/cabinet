@@ -146,6 +146,17 @@ export function GraphCanvas({
       }
     };
 
+    // Test hook: screen position of a node by id.
+    (window as any).__cabinetGraph = {
+      nodes: () => nodes.map((n) => n.id),
+      screen: (id: string) => {
+        const n = byId.get(id);
+        if (!n) return null;
+        const rect = el.getBoundingClientRect();
+        const { x: tx, y: ty, k } = view.current;
+        return { x: rect.left + width / 2 + tx + n.x! * k, y: rect.top + height / 2 + ty + n.y! * k };
+      },
+    };
     const sim = forceSimulation<N>(nodes)
       .force('link', forceLink<N, L>(links).id((d) => d.id).distance(labels ? (nodes.length > 60 ? 70 : 125) : 50).strength(0.5))
       .force('charge', forceManyBody().strength(labels ? (nodes.length > 60 ? -200 : -520) : -160))
