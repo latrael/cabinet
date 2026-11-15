@@ -203,6 +203,8 @@ export function toPlainText(md: string): string {
     .replace(/\[\[([^\]|#]+)(?:#[^\]]*)?\]\]/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s*\|?[\s:|-]+\|[\s:|-]*$/gm, ' ')
+    .replace(/\|/g, ' ')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
     .replace(/^\s*[-*+>]\s+/gm, '')

@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./types": "./src/types.ts",
     "./project": "./src/project.ts",
-    "./links": "./src/links.ts"
+    "./links": "./src/links.ts",
+    "./format": "./src/format.ts"
   },
   "dependencies": {
     "chokidar": "^6.0.0",
