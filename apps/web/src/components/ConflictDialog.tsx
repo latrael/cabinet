@@ -5,8 +5,8 @@ export function ConflictDialog({ conflict, onResolve }: { conflict: ConflictStat
   return (
     <Dialog.Root open={!!conflict}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.3)]" />
-        <Dialog.Content aria-describedby="conflict-desc" className="fixed top-[20vh] left-1/2 z-50 w-[min(480px,94vw)] -translate-x-1/2 rounded-[4px] border border-rule-strong bg-card p-6 shadow-[var(--shadow-sheet)]" data-testid="conflict-dialog">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.3)]" />
+        <Dialog.Content aria-describedby="conflict-desc" className="fixed top-[20vh] left-1/2 z-50 w-[min(480px,94vw)] -translate-x-1/2 border border-rule-strong bg-card p-6 shadow-[var(--shadow-sheet)]" data-testid="conflict-dialog">
           <Dialog.Title className="font-serif text-[20px]">This changed while you were editing</Dialog.Title>
           <p id="conflict-desc" className="mt-2 text-[14px] text-ink-soft">
             “{conflict?.current.title}” was edited somewhere else (another editor, an agent, or a sync) after you opened it. Nothing has been overwritten. Choose which version to keep.

@@ -101,23 +101,23 @@ export function ItemMenu({ item, onRefetch }: { item: Item; onRefetch?: () => vo
           <MoreHorizontal size={16} />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-48 rounded-[3px] border border-rule-strong bg-card p-1 text-[13.5px] shadow-[var(--shadow-lift)]">
-            <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 rounded-[2px] px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper" onSelect={async () => setRaw(await api<string>(`/api/items/${item.id}/raw`))}>
+          <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-48 border border-rule-strong bg-card p-1 text-[13.5px] shadow-[var(--shadow-lift)]">
+            <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper" onSelect={async () => setRaw(await api<string>(`/api/items/${item.id}/raw`))}>
               <FileCode size={14} /> Show Markdown file
             </DropdownMenu.Item>
             <DropdownMenu.Item
-              className="flex cursor-pointer items-center gap-2 rounded-[2px] px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper"
+              className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper"
               onSelect={async () => setHistory((await api<{ commits: any[] }>(`/api/items/${item.id}/history`)).commits)}
             >
               <History size={14} /> History
             </DropdownMenu.Item>
             {onRefetch && (
-              <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 rounded-[2px] px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper" onSelect={onRefetch}>
+              <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper" onSelect={onRefetch}>
                 <RefreshCw size={14} /> Fetch the page again
               </DropdownMenu.Item>
             )}
             <DropdownMenu.Item
-              className="flex cursor-pointer items-center gap-2 rounded-[2px] px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper"
+              className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 outline-none data-[highlighted]:bg-paper"
               onSelect={async () => {
                 await api(`/api/items/${item.id}/enrich`, { method: 'POST' }).catch((e) => toast(e.message, { tone: 'error' }));
                 toast('Asking the local model for suggestions…');
@@ -127,7 +127,7 @@ export function ItemMenu({ item, onRefetch }: { item: Item; onRefetch?: () => vo
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-rule" />
             <DropdownMenu.Item
-              className="flex cursor-pointer items-center gap-2 rounded-[2px] px-2.5 py-1.5 text-alert outline-none data-[highlighted]:bg-alert-wash"
+              className="flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-alert outline-none data-[highlighted]:bg-alert-wash"
               onSelect={async () => {
                 if (!confirm(`Delete “${item.title}”? The file is removed; git history keeps a copy.`)) return;
                 await api(`/api/items/${item.id}`, { method: 'DELETE' });
@@ -143,8 +143,8 @@ export function ItemMenu({ item, onRefetch }: { item: Item; onRefetch?: () => vo
       </DropdownMenu.Root>
       <Dialog.Root open={raw !== null} onOpenChange={(o) => !o && setRaw(null)}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.3)]" />
-          <Dialog.Content aria-describedby={undefined} className="fixed top-[8vh] left-1/2 z-50 max-h-[80vh] w-[min(760px,94vw)] -translate-x-1/2 overflow-auto rounded-[4px] border border-rule-strong bg-card p-5 shadow-[var(--shadow-sheet)]">
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.3)]" />
+          <Dialog.Content aria-describedby={undefined} className="fixed top-[8vh] left-1/2 z-50 max-h-[80vh] w-[min(760px,94vw)] -translate-x-1/2 overflow-auto border border-rule-strong bg-card p-5 shadow-[var(--shadow-sheet)]">
             <Dialog.Title className="mb-2 font-serif text-[18px]">{item.path}</Dialog.Title>
             <pre className="text-[12.5px] leading-relaxed whitespace-pre-wrap text-ink-soft">{raw}</pre>
           </Dialog.Content>
@@ -152,8 +152,8 @@ export function ItemMenu({ item, onRefetch }: { item: Item; onRefetch?: () => vo
       </Dialog.Root>
       <Dialog.Root open={history !== null} onOpenChange={(o) => !o && setHistory(null)}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.3)]" />
-          <Dialog.Content aria-describedby={undefined} className="fixed top-[12vh] left-1/2 z-50 max-h-[70vh] w-[min(560px,94vw)] -translate-x-1/2 overflow-auto rounded-[4px] border border-rule-strong bg-card p-5 shadow-[var(--shadow-sheet)]">
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.3)]" />
+          <Dialog.Content aria-describedby={undefined} className="fixed top-[12vh] left-1/2 z-50 max-h-[70vh] w-[min(560px,94vw)] -translate-x-1/2 overflow-auto border border-rule-strong bg-card p-5 shadow-[var(--shadow-sheet)]">
             <Dialog.Title className="mb-3 font-serif text-[18px]">History</Dialog.Title>
             {history?.length === 0 && <p className="text-[14px] text-faded">No commits yet. Changes are committed about 30 seconds after they happen.</p>}
             <ul className="flex flex-col">
@@ -186,7 +186,7 @@ export function AddToProjectButton({ item }: { item: Item }) {
         <FolderPlus size={13} /> Add to project
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={4} className="z-50 w-80 rounded-[3px] border border-rule-strong bg-card p-3 shadow-[var(--shadow-lift)]">
+        <Popover.Content align="start" sideOffset={4} className="z-50 w-80 border border-rule-strong bg-card p-3 shadow-[var(--shadow-lift)]">
           <form
             className="flex flex-col gap-2"
             onSubmit={async (e) => {
@@ -277,7 +277,7 @@ function VideoBlock({ item, it }: { item: Item; it: It }) {
   return (
     <div>
       {src ? (
-        <div className="aspect-video w-full overflow-hidden rounded-[3px] bg-ink shadow-[var(--shadow-card)]">
+        <div className="aspect-video w-full overflow-hidden bg-ink shadow-[var(--shadow-card)]">
           <iframe key={src} src={src} title={item.title} className="h-full w-full" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" />
         </div>
       ) : null}
@@ -318,7 +318,7 @@ function ManualContent({ item, onDone }: { item: Item; onDone: () => void }) {
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-[3px] border border-alert/30 bg-alert-wash/60 px-4 py-3 text-[14px]" data-testid="extraction-failed">
+    <div className=" border border-alert/30 bg-alert-wash/60 px-4 py-3 text-[14px]" data-testid="extraction-failed">
       <p className="text-ink">Cabinet couldn't read this page, so only the link was saved. You can paste the text yourself, or try fetching it again.</p>
       {open ? (
         <div className="mt-2">
@@ -418,13 +418,9 @@ function ItemView({ it }: { it: It }) {
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_300px]">
       <article className="min-w-0">
         <div className="mb-2 flex items-center gap-2">
-          <span className="relative inline-block h-3 w-16">
-            <span className="tab !top-0" style={{ ['--tab-x' as any]: '0px' }}>
-              {TYPE_LABEL[item.type]}
-            </span>
-          </span>
-          {item.status === 'inbox' && <span className="rounded-sm bg-lamp-wash px-1.5 text-[12px] text-lamp">in your inbox</span>}
-          {item.status === 'archived' && <span className="rounded-sm bg-paper-deep px-1.5 text-[12px] text-faded">archived</span>}
+          <span className="kicker">{TYPE_LABEL[item.type]}</span>
+          {item.status === 'inbox' && <span className=" bg-lamp-wash px-1.5 text-[12px] text-lamp">in your inbox</span>}
+          {item.status === 'archived' && <span className=" bg-paper-deep px-1.5 text-[12px] text-faded">archived</span>}
           <div className="ml-auto flex items-center gap-1">
             <span className="mr-2 text-[12px] text-faded" aria-live="polite">
               {it.saving ? 'Saving…' : it.changedOnDisk ? 'Changed on disk' : savedAt ? 'Saved' : ''}
@@ -504,11 +500,11 @@ function ItemView({ it }: { it: It }) {
           {item.type === 'video' && <VideoBlock item={item} it={it} />}
           {item.type === 'image' && fm.attachment && (
             <a href={fileUrl(fm.attachment)} target="_blank" rel="noreferrer">
-              <img src={fileUrl(fm.attachment)} alt={item.title} className="max-h-[70vh] rounded-[3px] shadow-[var(--shadow-lift)]" />
+              <img src={fileUrl(fm.attachment)} alt={item.title} className="max-h-[70vh] shadow-[var(--shadow-lift)]" />
             </a>
           )}
           {item.type === 'pdf' && fm.attachment && (
-            <div className="overflow-hidden rounded-[3px] border border-rule bg-card shadow-[var(--shadow-card)]">
+            <div className="overflow-hidden border border-rule bg-card shadow-[var(--shadow-card)]">
               <iframe src={fileUrl(fm.attachment)} title={item.title} className="h-[72vh] w-full" data-testid="pdf-viewer" />
             </div>
           )}

@@ -423,9 +423,17 @@ export function createApp(ctx: ServerContext) {
     const recent = lib.index.list({ excludeTypes: ['project', 'collection', 'memory'], limit: 12, sort: 'created' }).items;
     const counts = lib.index.counts();
     const digest = lib.state.digests(1)[0] ?? null;
+    // "Continue": the things opened most recently, newest first.
+    const lastOpened = [...lib.state.opens()].sort((a, b) => b[1].last.localeCompare(a[1].last)).map(([id]) => id);
+    const opened = new Map(lib.index.getSummaries(lastOpened.slice(0, 24)).map((i) => [i.id, i]));
+    const resume = lastOpened
+      .map((id) => opened.get(id))
+      .filter((i): i is NonNullable<typeof i> => !!i && i.type !== 'collection' && i.type !== 'memory' && i.status !== 'archived')
+      .slice(0, 4);
     return c.json({
       interests,
       recent,
+      resume,
       counts,
       revisit: revisit(lib.index, lib.state, { now }),
       digest,

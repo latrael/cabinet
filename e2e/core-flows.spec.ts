@@ -339,5 +339,5 @@ test('9. export, restore, and check the result', async ({ page }) => {
   const proj = await apiGet(srv.url, `/api/items/${ids.project}`);
   expect(proj.item.body).toContain('### Sound');
   await page.goto(srv.url + '/');
-  await expect(page.getByText('Recently saved')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 });

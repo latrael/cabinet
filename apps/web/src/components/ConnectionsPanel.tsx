@@ -21,7 +21,7 @@ function Section({ title, count, children, testid }: { title: string; count?: nu
 function Row({ id, title, type, note, icon }: { id: string; title: string; type: any; note?: React.ReactNode; icon?: React.ReactNode }) {
   const Icon = TYPE_ICON[type as keyof typeof TYPE_ICON] ?? Link2;
   return (
-    <Link to="/item/$id" params={{ id }} className="group flex gap-2 rounded-[3px] px-1.5 py-1 hover:bg-card">
+    <Link to="/item/$id" params={{ id }} className="group flex gap-2 px-1.5 py-1 hover:bg-card">
       <span className="mt-[3px] text-faded">{icon ?? <Icon size={13} strokeWidth={1.7} />}</span>
       <span className="min-w-0">
         <span className="block font-serif text-[14.5px] leading-snug group-hover:text-lamp">{title}</span>
@@ -77,7 +77,7 @@ export function SuggestionTray({ suggestions, itemId }: { suggestions: Suggestio
       <p className="mb-2 text-[12px] text-faded">Proposed by the local model. Nothing changes until you accept.</p>
       <ul className="flex flex-col gap-1.5" data-item-id={itemId}>
         {suggestions.map((s) => (
-          <li key={s.id} className="flex items-start gap-2 rounded-[3px] bg-card px-2 py-1.5 text-[13px] shadow-[var(--shadow-card)]">
+          <li key={s.id} className="flex items-start gap-2 bg-card px-2 py-1.5 text-[13px] shadow-[var(--shadow-card)]">
             <Sparkles size={13} className="mt-0.5 shrink-0 text-brass" />
             <span className="min-w-0 flex-1 leading-snug">{describe(s)}</span>
             <button className="text-lamp hover:text-lamp-deep" onClick={() => void act(s, 'accept')} aria-label="Accept suggestion">
@@ -177,7 +177,7 @@ export function ConnectionsPanel({ detail }: { detail: ItemDetail }) {
         </Section>
       )}
       <Section title="Neighbourhood">
-        <div className="rounded-[3px] border border-rule bg-card/70">
+        <div className=" border border-rule bg-card/70">
           <GraphCanvas data={graph.data} height={210} labels={false} onSelect={(id) => id !== item.id && navigate({ to: '/item/$id', params: { id } })} />
         </div>
         <Link to="/graph" search={{ focus: item.id } as any} className="mt-1.5 inline-block text-[12.5px] text-lamp hover:underline">

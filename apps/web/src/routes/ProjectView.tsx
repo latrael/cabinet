@@ -119,8 +119,8 @@ export function ProjectView({ it }: { it: It }) {
     <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="min-w-0">
         <ProjectHeader it={it} onPickCover={() => undefined} />
-        <div className="mt-6 mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="section-title mr-2">Material</h2>
+        <div className="mt-8 mb-3 flex flex-wrap items-center gap-2 border-t-2 border-ink pt-2.5">
+          <h2 className="section-title mr-2 !border-0 !pt-0">Material</h2>
           <button className="btn btn-sm" onClick={() => setGather(true)} data-testid="gather">
             <Search size={13} /> Gather
           </button>
@@ -148,7 +148,7 @@ export function ProjectView({ it }: { it: It }) {
           <div className={panel ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]' : ''}>
             <div className="flex flex-col gap-7">
               {sections.length === 0 && (
-                <div className="rounded-[3px] border border-dashed border-rule-strong px-6 py-8 text-center text-[14.5px] text-faded">
+                <div className=" border border-dashed border-rule-strong px-6 py-8 text-center text-[14.5px] text-faded">
                   Nothing here yet. Paste a link, use Gather to pick things you already saved, or open the library panel and drag cards in.
                 </div>
               )}
@@ -188,7 +188,7 @@ function ProjectHeader({ it }: { it: It; onPickCover: () => void }) {
       <CoverPicker cover={fm.cover} images={images} onPick={(cover) => void it.mutate(() => ({ frontmatter: { cover } }))} />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2">
-          <span className="text-[12.5px] font-semibold text-brass">Project</span>
+          <span className="kicker">Project</span>
           <select className="bg-transparent text-[12.5px] text-faded focus:outline-none" value={fm.kind ?? ''} onChange={(e) => void it.mutate(() => ({ frontmatter: { kind: e.target.value || null } }))} aria-label="Kind">
             <option value="">no kind</option>
             {PROJECT_KINDS.map((k) => (
@@ -198,13 +198,13 @@ function ProjectHeader({ it }: { it: It; onPickCover: () => void }) {
             ))}
           </select>
           <div className="ml-auto flex items-center gap-1">
-            <div className="flex rounded-[3px] border border-rule-strong bg-card text-[12.5px]" role="radiogroup" aria-label="Status">
+            <div className="flex border border-rule-strong bg-card text-[12.5px]" role="radiogroup" aria-label="Status">
               {PROJECT_STATUSES.map((s) => (
                 <button
                   key={s}
                   role="radio"
                   aria-checked={(fm.project_status ?? 'active') === s}
-                  className={`px-2.5 py-1 ${(fm.project_status ?? 'active') === s ? 'bg-lamp text-[#f6f1e4]' : 'text-ink-soft hover:bg-paper'}`}
+                  className={`px-2.5 py-1 ${(fm.project_status ?? 'active') === s ? 'bg-ink text-white' : 'text-ink-soft hover:bg-paper'}`}
                   onClick={() => void it.mutate(() => ({ frontmatter: { project_status: s } }))}
                 >
                   {s}
@@ -241,18 +241,18 @@ function CoverPicker({ cover, images, onPick }: { cover?: string; images: ItemSu
   const [open, setOpen] = useState(false);
   return (
     <div className="relative shrink-0">
-      <button className="group flex h-36 w-full items-center justify-center overflow-hidden rounded-[3px] bg-paper-deep shadow-[var(--shadow-card)] md:w-48" onClick={() => setOpen(!open)} aria-label="Change cover">
+      <button className="group flex h-36 w-full items-center justify-center overflow-hidden bg-paper-deep shadow-[var(--shadow-card)] md:w-48" onClick={() => setOpen(!open)} aria-label="Change cover">
         {cover ? <img src={thumbUrl(cover, 480)} alt="" className="h-full w-full object-cover" /> : <ImageIcon size={22} className="text-faded" />}
-        <span className="absolute right-1.5 bottom-1.5 rounded-sm bg-card/90 px-1.5 py-0.5 text-[11px] text-ink-soft opacity-0 group-hover:opacity-100">Pin a cover</span>
+        <span className="absolute right-1.5 bottom-1.5 bg-card/90 px-1.5 py-0.5 text-[11px] text-ink-soft opacity-0 group-hover:opacity-100">Pin a cover</span>
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-20 mt-1 w-72 rounded-[3px] border border-rule-strong bg-card p-2 shadow-[var(--shadow-lift)]">
+        <div className="absolute top-full left-0 z-20 mt-1 w-72 border border-rule-strong bg-card p-2 shadow-[var(--shadow-lift)]">
           {images.length === 0 && <p className="p-2 text-[13px] text-faded">Add an image to the material to use it as a cover.</p>}
           <div className="grid grid-cols-3 gap-1.5">
             {images.map((i) => {
               const src = i.cover ?? i.attachment!;
               return (
-                <button key={i.id} onClick={() => (onPick(src), setOpen(false))} className={`aspect-square overflow-hidden rounded-[2px] ${src === cover ? 'ring-2 ring-brass' : ''}`} aria-label={`Use ${i.title}`}>
+                <button key={i.id} onClick={() => (onPick(src), setOpen(false))} className={`aspect-square overflow-hidden ${src === cover ? 'ring-2 ring-brass' : ''}`} aria-label={`Use ${i.title}`}>
                   <img src={thumbUrl(src, 160)} alt="" className="h-full w-full object-cover" />
                 </button>
               );
@@ -301,7 +301,7 @@ function SectionBlock({ name, entries, byKey, view, mat }: { name: string; entri
   const [editing, setEditing] = useState(false);
   const [v, setV] = useState(name);
   return (
-    <section ref={setNodeRef} className={`rounded-[4px] transition-colors ${isOver ? 'bg-lamp-wash/50 outline-2 outline-lamp/30 outline-dashed' : ''}`} data-section={name || 'unsorted'}>
+    <section ref={setNodeRef} className={` transition-colors ${isOver ? 'bg-lamp-wash/50 outline-2 outline-lamp/30 outline-dashed' : ''}`} data-section={name || 'unsorted'}>
       <div className="group mb-2 flex items-center gap-2 border-b border-rule pb-1">
         {editing ? (
           <form
@@ -409,7 +409,7 @@ function Entry({ section, entry, item, view, mat }: { section: string; entry: Ma
       </div>
       {item ? (
         <Link to="/item/$id" params={{ id: item.id }} className="block px-3 pt-1">
-          {cover && <img src={thumbUrl(cover, 360)} alt="" className="mb-2 aspect-[4/3] w-full rounded-[2px] object-cover" loading="lazy" />}
+          {cover && <img src={thumbUrl(cover, 360)} alt="" className="mb-2 aspect-[4/3] w-full object-cover" loading="lazy" />}
           <div className="font-serif text-[15px] leading-snug hover:text-lamp">{item.title}</div>
           <div className="text-[11.5px] text-faded">{item.site ?? host(item.url) ?? ''}</div>
         </Link>
@@ -431,7 +431,7 @@ function LibraryPanel({ exclude }: { exclude: Set<string> }) {
     placeholderData: (p) => p,
   });
   return (
-    <aside className="rounded-[4px] border border-rule bg-paper-deep/50 p-3 lg:sticky lg:top-4 lg:max-h-[80vh] lg:self-start lg:overflow-y-auto" data-testid="library-panel">
+    <aside className=" border border-rule bg-paper-deep/50 p-3 lg:sticky lg:top-4 lg:max-h-[80vh] lg:self-start lg:overflow-y-auto" data-testid="library-panel">
       <div className="mb-2 text-[13px] font-semibold text-ink-soft">Inbox and library</div>
       <input className="field mb-2 text-[13px]" placeholder="Filter" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter library" />
       <div className="flex flex-col gap-1.5">
@@ -449,7 +449,7 @@ function PanelItem({ item }: { item: ItemSummary }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `lib::${item.id}`, data: { slug: item.slug } });
   const Icon = TYPE_ICON[item.type];
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} className={`flex cursor-grab items-center gap-2 rounded-[3px] bg-card px-2 py-1.5 text-[13.5px] shadow-[var(--shadow-card)] ${isDragging ? 'opacity-40' : ''}`} data-panel-item={item.slug}>
+    <div ref={setNodeRef} {...attributes} {...listeners} className={`flex cursor-grab items-center gap-2 bg-card px-2 py-1.5 text-[13.5px] shadow-[var(--shadow-card)] ${isDragging ? 'opacity-40' : ''}`} data-panel-item={item.slug}>
       <Icon size={13} className="shrink-0 text-faded" />
       <span className="truncate font-serif">{item.title}</span>
       {item.status === 'inbox' && <span className="ml-auto text-[10.5px] text-lamp">inbox</span>}
@@ -480,8 +480,8 @@ function GatherDialog({ open, onOpenChange, sections, exclude, onAdd }: { open: 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.28)]" />
-        <Dialog.Content aria-describedby={undefined} className="fixed top-[8vh] left-1/2 z-50 flex max-h-[84vh] w-[min(600px,94vw)] -translate-x-1/2 flex-col rounded-[4px] border border-rule-strong bg-paper shadow-[var(--shadow-sheet)]" data-testid="gather-dialog">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.28)]" />
+        <Dialog.Content aria-describedby={undefined} className="fixed top-[8vh] left-1/2 z-50 flex max-h-[84vh] w-[min(600px,94vw)] -translate-x-1/2 flex-col border border-rule-strong bg-paper shadow-[var(--shadow-sheet)]" data-testid="gather-dialog">
           <div className="border-b border-rule px-5 py-3">
             <Dialog.Title className="font-serif text-[19px]">Gather material</Dialog.Title>
             <p className="text-[13px] text-faded">Pick things you already saved. They stay where they are; the project just points to them.</p>
@@ -497,8 +497,8 @@ function GatherDialog({ open, onOpenChange, sections, exclude, onAdd }: { open: 
                 const Icon = TYPE_ICON[i.type];
                 return (
                   <li key={i.id}>
-                    <button className="flex w-full items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left hover:bg-card" onClick={() => toggle(i)} aria-pressed={on}>
-                      <span className={`flex h-4 w-4 items-center justify-center rounded-[2px] border ${on ? 'border-lamp bg-lamp text-card' : 'border-rule-strong'}`}>{on && <Check size={11} strokeWidth={3} />}</span>
+                    <button className="flex w-full items-center gap-2.5 px-2 py-1.5 text-left hover:bg-card" onClick={() => toggle(i)} aria-pressed={on}>
+                      <span className={`flex h-4 w-4 items-center justify-center border ${on ? 'border-ink bg-ink text-card' : 'border-rule-strong'}`}>{on && <Check size={11} strokeWidth={3} />}</span>
                       <Icon size={13} className="text-faded" />
                       <span className="truncate font-serif text-[15px]">{i.title}</span>
                       <span className="ml-auto text-[11.5px] text-faded">{TYPE_LABEL[i.type]}</span>

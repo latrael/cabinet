@@ -1,32 +1,35 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/literata/index.css';
-@import '@fontsource-variable/literata/opsz-italic.css';
-@import '@fontsource-variable/instrument-sans/index.css';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource-variable/newsreader/opsz-italic.css';
+@import '@fontsource-variable/libre-franklin/index.css';
+@import '@fontsource-variable/libre-franklin/wght-italic.css';
 
+/* Newsprint: an off-white page, black ink, grey hairlines, and one ink-blue accent
+   reserved for links and the current section. Token names are historical. */
 @theme {
-  --color-paper: #f0e9d8; /* rag paper, the room */
-  --color-paper-deep: #e7dec9; /* drawer interiors, wells */
-  --color-card: #fbf7ec; /* card stock */
-  --color-ink: #2b2823; /* graphite */
-  --color-ink-soft: #4a453d;
-  --color-faded: #71695c; /* faded ink */
-  --color-rule: #dcd1bc; /* catalogue rule */
-  --color-rule-strong: #c9bca2;
-  --color-lamp: #2e5b4e; /* banker's-lamp green */
-  --color-lamp-deep: #234539;
-  --color-lamp-wash: #dfe6dc;
-  --color-brass: #a8843a;
-  --color-highlight: #f3dc8c; /* pencil highlighter */
-  --color-alert: #9b3b2a; /* conflicts, destructive */
-  --color-alert-wash: #f3dfd6;
+  --color-paper: #f6f4ee; /* the page */
+  --color-paper-deep: #eceae2; /* wells, code, image placeholders */
+  --color-card: #fcfbf8; /* floating surfaces: sheets, menus, fields */
+  --color-ink: #161616;
+  --color-ink-soft: #3b3b39;
+  --color-faded: #6b6a65;
+  --color-rule: #d9d6cd; /* hairline */
+  --color-rule-strong: #aeaba2;
+  --color-lamp: #1d3f6e; /* the accent */
+  --color-lamp-deep: #142d50;
+  --color-lamp-wash: #e4e9f1;
+  --color-brass: #86681f; /* in-progress states */
+  --color-highlight: #f6e7a1;
+  --color-alert: #a3271b;
+  --color-alert-wash: #f6e2de;
 
-  --font-serif: 'Literata Variable', 'Iowan Old Style', Georgia, serif;
-  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'Libre Franklin Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --radius-card: 3px;
-  --shadow-card: 0 1px 0 rgba(80, 62, 30, 0.08), 0 2px 6px -2px rgba(80, 62, 30, 0.18);
-  --shadow-lift: 0 2px 0 rgba(80, 62, 30, 0.06), 0 10px 24px -8px rgba(80, 62, 30, 0.3);
-  --shadow-sheet: 0 24px 60px -20px rgba(43, 40, 35, 0.45);
+  --radius-card: 0px;
+  --shadow-card: none;
+  --shadow-lift: 0 8px 24px -10px rgba(0, 0, 0, 0.28);
+  --shadow-sheet: 0 24px 60px -24px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
@@ -40,30 +43,26 @@
   }
   body {
     min-height: 100vh;
-    /* a faint laid-paper texture: horizontal chain lines */
-    background-image: repeating-linear-gradient(0deg, rgba(120, 100, 60, 0.025) 0 1px, transparent 1px 6px);
   }
   ::selection {
     background: var(--color-highlight);
   }
   :focus-visible {
-    outline: 2px solid var(--color-brass);
+    outline: 2px solid var(--color-lamp);
     outline-offset: 2px;
-    border-radius: 2px;
   }
   h1,
   h2,
   h3 {
     font-family: var(--font-serif);
-    font-weight: 560;
-    letter-spacing: -0.005em;
+    font-weight: 500;
+    letter-spacing: -0.012em;
     text-wrap: balance;
   }
   mark {
     background: var(--color-highlight);
     color: inherit;
     padding: 0 1px;
-    border-radius: 1px;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -76,55 +75,113 @@
 }
 
 @layer components {
-  /* ------------------------------------------------------------ index card + divider tab */
+  /* ------------------------------------------------------------ surfaces */
+  /* A panel: flat, square, one hairline. Nothing lifts or moves on hover. */
   .card {
     position: relative;
     background: var(--color-card);
     border: 1px solid var(--color-rule);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-card);
-  }
-  .card-interactive {
-    transition:
-      box-shadow 140ms ease,
-      transform 140ms ease;
-  }
-  .card-interactive:hover {
-    box-shadow: var(--shadow-lift);
-    transform: translateY(-1px);
-  }
-  /* The catalogue tab: its horizontal position encodes the item type. */
-  .tab {
-    position: absolute;
-    top: -11px;
-    height: 12px;
-    min-width: 54px;
-    padding: 0 8px;
-    left: var(--tab-x, 12px);
-    background: var(--color-card);
-    border: 1px solid var(--color-rule);
-    border-bottom: none;
-    border-radius: 3px 3px 0 0;
-    font-size: 9.5px;
-    line-height: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--color-faded);
-    text-align: center;
-  }
-  .tab::after {
-    /* hide the card's top border under the tab */
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -1px;
-    height: 1px;
-    background: var(--color-card);
   }
   .card-rule {
-    /* the header line of an index card */
-    border-bottom: 1px solid color-mix(in srgb, var(--color-lamp) 45%, transparent);
+    border-bottom: 1px solid var(--color-rule);
+  }
+  /* Small uppercase label: item type, section, byline. */
+  .kicker,
+  .tab {
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    line-height: 1.3;
+    font-weight: 650;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-faded);
+  }
+  /* Section head: a heavy rule with the label hanging under it. */
+  .section-title {
+    display: block;
+    border-top: 2px solid var(--color-ink);
+    padding-top: 8px;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+
+  /* ------------------------------------------------------------ item grid */
+  /* Even columns separated by inset hairlines, like a newspaper page. The grid is
+     pulled out by one gutter so text in the first column sits on the page margin. */
+  .item-grid {
+    --gutter: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    margin: 0 calc(var(--gutter) * -1);
+    overflow: hidden;
+  }
+  .item-grid > * {
+    position: relative;
+    min-width: 0;
+    padding: 18px var(--gutter) 20px;
+  }
+  .item-grid > *::before {
+    /* column rule; the last column's falls outside the grid and is clipped */
+    content: '';
+    position: absolute;
+    top: 18px;
+    bottom: 20px;
+    right: -1px;
+    width: 1px;
+    background: var(--color-rule);
+  }
+  .item-grid > *::after {
+    /* row rule; the last row's falls outside the grid and is clipped */
+    content: '';
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: -1px;
+    height: 1px;
+    background: var(--color-rule);
+  }
+  .item-cell a:focus-visible {
+    outline-offset: -2px;
+  }
+  .item-cell:hover .item-title,
+  .headline-link:hover .item-title {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* ------------------------------------------------------------ masthead */
+  .nameplate {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'opsz' 72;
+  }
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 0 9px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-size: 13px;
+    font-weight: 550;
+    color: var(--color-ink-soft);
+    white-space: nowrap;
+  }
+  .nav-link:hover {
+    color: var(--color-ink);
+  }
+  .nav-link[data-status='active'] {
+    color: var(--color-lamp);
+    border-bottom-color: var(--color-lamp);
   }
 
   /* ------------------------------------------------------------ controls */
@@ -134,29 +191,28 @@
     gap: 6px;
     height: 32px;
     padding: 0 12px;
-    border-radius: 3px;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 550;
     border: 1px solid var(--color-rule-strong);
-    background: var(--color-card);
+    background: transparent;
     color: var(--color-ink);
     white-space: nowrap;
     transition: background 120ms ease;
   }
   .btn:hover {
-    background: #fffdf6;
+    background: var(--color-paper-deep);
   }
   .btn:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: default;
   }
   .btn-primary {
-    background: var(--color-lamp);
-    border-color: var(--color-lamp-deep);
-    color: #f6f1e4;
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: #fff;
   }
   .btn-primary:hover {
-    background: var(--color-lamp-deep);
+    background: #000;
   }
   .btn-quiet {
     border-color: transparent;
@@ -164,7 +220,7 @@
     color: var(--color-ink-soft);
   }
   .btn-quiet:hover {
-    background: color-mix(in srgb, var(--color-paper-deep) 70%, transparent);
+    background: var(--color-paper-deep);
   }
   .btn-sm {
     height: 26px;
@@ -176,9 +232,8 @@
   }
   .field {
     width: 100%;
-    background: #fffdf7;
+    background: var(--color-card);
     border: 1px solid var(--color-rule-strong);
-    border-radius: 3px;
     padding: 7px 10px;
     font-size: 14px;
     color: var(--color-ink);
@@ -188,8 +243,7 @@
   }
   .field:focus {
     outline: none;
-    border-color: var(--color-lamp);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-lamp) 15%, transparent);
+    border-color: var(--color-ink);
   }
   .chip {
     display: inline-flex;
@@ -197,33 +251,26 @@
     gap: 4px;
     height: 22px;
     padding: 0 8px;
-    border-radius: 11px;
     font-size: 12px;
-    background: color-mix(in srgb, var(--color-paper-deep) 80%, white);
+    background: transparent;
     color: var(--color-ink-soft);
-    border: 1px solid transparent;
+    border: 1px solid var(--color-rule);
   }
   .chip-active {
-    background: var(--color-lamp);
-    color: #f6f1e4;
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: #fff;
   }
   .label {
     font-size: 12.5px;
     font-weight: 600;
     color: var(--color-faded);
   }
-  .section-title {
-    font-family: var(--font-serif);
-    font-size: 19px;
-    font-weight: 560;
-  }
   .kbd {
     font-family: var(--font-sans);
     font-size: 11px;
     padding: 1px 5px;
-    border-radius: 3px;
     border: 1px solid var(--color-rule-strong);
-    background: var(--color-card);
     color: var(--color-faded);
   }
 
@@ -267,7 +314,7 @@
     color: var(--color-faded);
   }
   .prose-cabinet blockquote {
-    border-left: 2px solid var(--color-brass);
+    border-left: 2px solid var(--color-ink);
     padding-left: 1em;
     font-style: italic;
     color: var(--color-ink-soft);
@@ -285,8 +332,6 @@
   }
   .prose-cabinet img {
     max-width: 100%;
-    border-radius: 2px;
-    box-shadow: var(--shadow-card);
   }
   .prose-cabinet code {
     font-size: 0.86em;
@@ -319,16 +364,6 @@
     accent-color: var(--color-lamp);
     margin-right: 6px;
   }
-
-  /* ------------------------------------------------------------ masonry */
-  .masonry {
-    column-gap: 22px;
-    columns: 260px;
-  }
-  .masonry > * {
-    break-inside: avoid;
-    margin-bottom: 26px;
-  }
 }
 
 /* CodeMirror theme overrides */
@@ -355,14 +390,13 @@
 .cm-tooltip.cm-tooltip-autocomplete {
   background: var(--color-card);
   border: 1px solid var(--color-rule-strong);
-  border-radius: 3px;
   box-shadow: var(--shadow-lift);
   font-family: var(--font-sans);
   font-size: 13px;
 }
 .cm-tooltip-autocomplete ul li[aria-selected] {
   background: var(--color-lamp) !important;
-  color: #f6f1e4 !important;
+  color: #fff !important;
 }
 .cm-completionDetail {
   color: var(--color-faded);

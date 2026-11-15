@@ -16,11 +16,11 @@ interface N extends SimulationNodeDatum {
 type L = SimulationLinkDatum<N> & { kind: string };
 
 const COLORS = {
-  note: '#2b2823',
-  source: '#2e5b4e',
-  project: '#a8843a',
-  memory: '#8a7f6e',
-  collection: '#a8843a',
+  note: '#161616',
+  source: '#1d3f6e',
+  project: '#161616',
+  memory: '#8d8b85',
+  collection: '#161616',
 };
 function colorFor(t: string) {
   if (t === 'note') return COLORS.note;
@@ -116,7 +116,7 @@ export function GraphCanvas({
         ctx.beginPath();
         ctx.moveTo(s.x!, s.y!);
         ctx.lineTo(t.x!, t.y!);
-        ctx.strokeStyle = l.kind === 'material' ? 'rgba(168,132,58,0.55)' : 'rgba(74,69,61,0.28)';
+        ctx.strokeStyle = l.kind === 'material' ? 'rgba(22,22,22,0.6)' : 'rgba(22,22,22,0.2)';
         ctx.lineWidth = l.kind === 'material' ? 1.4 / k : 1 / k;
         ctx.stroke();
       }
@@ -124,23 +124,23 @@ export function GraphCanvas({
         ctx.beginPath();
         ctx.arc(n.x!, n.y!, n.r, 0, Math.PI * 2);
         const c = colorFor(n.item.type);
-        ctx.fillStyle = n.item.type === 'note' || n.item.type === 'memory' ? '#fbf7ec' : c;
+        ctx.fillStyle = n.item.type === 'note' || n.item.type === 'memory' ? '#fcfbf8' : c;
         ctx.fill();
         ctx.lineWidth = (n.id === data.center || n.id === selected ? 2.4 : 1.4) / k;
-        ctx.strokeStyle = n.id === selected ? '#a8843a' : c;
+        ctx.strokeStyle = n.id === selected ? (c === '#1d3f6e' ? '#161616' : '#1d3f6e') : c;
         ctx.stroke();
       }
       if (labels) {
-        ctx.font = `${12 / k}px "Literata Variable", Georgia, serif`;
+        ctx.font = `${12 / k}px "Newsreader Variable", Georgia, serif`;
         ctx.textAlign = 'center';
         for (const n of nodes) {
           const important = n.id === data.center || n === hover || n.id === selected || nodes.length < 40;
           if (!important && k < 1.2) continue;
           const label = n.item.title.length > 34 ? n.item.title.slice(0, 32) + '…' : n.item.title;
-          ctx.fillStyle = 'rgba(240,233,216,0.85)';
+          ctx.fillStyle = 'rgba(252,251,248,0.88)';
           const w = ctx.measureText(label).width;
           ctx.fillRect(n.x! - w / 2 - 2 / k, n.y! + n.r + 3 / k, w + 4 / k, 15 / k);
-          ctx.fillStyle = n.id === data.center ? '#2b2823' : '#4a453d';
+          ctx.fillStyle = n.id === data.center ? '#161616' : '#3b3b39';
           ctx.fillText(label, n.x!, n.y! + n.r + 14 / k);
         }
       }
@@ -273,7 +273,7 @@ export function GraphCanvas({
     <canvas
       ref={canvas}
       style={{ width: '100%', height, touchAction: 'none', cursor: 'grab' }}
-      className="block rounded-[3px]"
+      className="block"
       role="img"
       aria-label={data ? `Graph of ${data.nodes.length} connected items` : 'Graph'}
       data-testid="graph-canvas"

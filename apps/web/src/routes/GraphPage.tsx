@@ -107,12 +107,12 @@ export function GraphPage() {
           <ul className="mt-5 flex flex-col gap-1.5 text-[13px] text-ink-soft">
             {GRAPH_LEGEND.map((l) => (
               <li key={l.label} className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-full border-[1.5px]" style={{ borderColor: l.color, background: l.hollow ? '#fbf7ec' : l.color }} />
+                <span className="inline-block h-3 w-3 rounded-full border-[1.5px]" style={{ borderColor: l.color, background: l.hollow ? '#fcfbf8' : l.color }} />
                 {l.label}
               </li>
             ))}
             <li className="flex items-center gap-2">
-              <span className="inline-block h-0.5 w-4 bg-brass" /> project material
+              <span className="inline-block h-0.5 w-4 bg-ink/60" /> project material
             </li>
           </ul>
           <p className="mt-4 text-[12.5px] text-faded">{graph.data?.nodes.length ?? 0} items shown</p>

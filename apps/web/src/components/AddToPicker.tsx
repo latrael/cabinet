@@ -42,7 +42,7 @@ export function AddToPicker({ value, onChange, allowProjects = true }: { value: 
           </button>
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Content align="start" sideOffset={4} className="z-[60] w-72 rounded-[3px] border border-rule-strong bg-card p-1.5 shadow-[var(--shadow-lift)]">
+          <Popover.Content align="start" sideOffset={4} className="z-[60] w-72 border border-rule-strong bg-card p-1.5 shadow-[var(--shadow-lift)]">
             <input
               className="field mb-1 text-[13.5px]"
               autoFocus
@@ -65,7 +65,7 @@ export function AddToPicker({ value, onChange, allowProjects = true }: { value: 
                 ps.map((p) => {
                   const t: AddTarget = { kind: 'project', id: p.id, title: p.title };
                   return (
-                    <button key={p.id} type="button" className="flex w-full items-center gap-2 rounded-[2px] px-2 py-1.5 text-left text-[13.5px] hover:bg-paper" onClick={() => toggle(t)}>
+                    <button key={p.id} type="button" className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13.5px] hover:bg-paper" onClick={() => toggle(t)}>
                       <FolderKanban size={13} className="text-faded" />
                       <span className="flex-1 truncate">{p.title}</span>
                       {has(t) && <Check size={13} className="text-lamp" />}
@@ -76,7 +76,7 @@ export function AddToPicker({ value, onChange, allowProjects = true }: { value: 
               {cs.map((c) => {
                 const t: AddTarget = { kind: 'collection', title: c.name };
                 return (
-                  <button key={c.name} type="button" className="flex w-full items-center gap-2 rounded-[2px] px-2 py-1.5 text-left text-[13.5px] hover:bg-paper" onClick={() => toggle(t)}>
+                  <button key={c.name} type="button" className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13.5px] hover:bg-paper" onClick={() => toggle(t)}>
                     <Library size={13} className="text-faded" />
                     <span className="flex-1 truncate">{c.name}</span>
                     {has(t) && <Check size={13} className="text-lamp" />}
@@ -84,7 +84,7 @@ export function AddToPicker({ value, onChange, allowProjects = true }: { value: 
                 );
               })}
               {ql && !exact && (
-                <button type="button" className="flex w-full items-center gap-2 rounded-[2px] px-2 py-1.5 text-left text-[13.5px] text-lamp hover:bg-paper" onClick={() => toggle({ kind: 'collection', title: q.trim() })}>
+                <button type="button" className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[13.5px] text-lamp hover:bg-paper" onClick={() => toggle({ kind: 'collection', title: q.trim() })}>
                   <Plus size={13} /> New collection “{q.trim()}”
                 </button>
               )}

@@ -70,7 +70,7 @@ function SecretField({ label, isSet, onSave, placeholder }: { label: string; isS
 function Snippet({ text }: { text: string }) {
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded-[3px] bg-paper-deep px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft">{text}</pre>
+      <pre className="overflow-x-auto bg-paper-deep px-3 py-2.5 text-[12px] leading-relaxed text-ink-soft">{text}</pre>
       <button className="btn btn-sm absolute top-1.5 right-1.5" onClick={() => navigator.clipboard.writeText(text).then(() => toast('Copied'))} aria-label="Copy">
         <Copy size={12} />
       </button>
@@ -215,7 +215,7 @@ export function SettingsPage() {
       </Block>
 
       <Block title="AI" desc="Runs locally with Ollama by default. Nothing leaves this computer unless you choose Claude or OpenAI.">
-        <div className="rounded-[3px] bg-card px-3 py-2 text-[13.5px] shadow-[var(--shadow-card)]" data-testid="ai-status">
+        <div className=" bg-card px-3 py-2 text-[13.5px] shadow-[var(--shadow-card)]" data-testid="ai-status">
           {ai.data ? (
             <>
               <strong className="font-semibold">{ai.data.provider}</strong>: chat {ai.data.chat ? `ready (${ai.data.chatModel})` : 'unavailable'}, meaning search {ai.data.embeddings ? `ready (${ai.data.embedModel}, ${ai.data.indexed ?? 0} passages)` : 'unavailable'}
@@ -308,7 +308,7 @@ export function SettingsPage() {
             <button className="btn">Create token</button>
           </form>
           {newToken && (
-            <div className="mt-3 rounded-[3px] border border-brass/50 bg-highlight/30 p-3 text-[13.5px]">
+            <div className="mt-3 border border-brass/50 bg-highlight/30 p-3 text-[13.5px]">
               Token for <strong>{newToken.name}</strong>. Copy it now; it won’t be shown again.
               <Snippet text={newToken.token} />
             </div>
