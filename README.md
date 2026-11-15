@@ -1,14 +1,74 @@
 # Cabinet
 
-A local-first home for saved articles, images, PDFs, notes and hobby projects, with linked Markdown and memory for AI agents.
+**A local-first home for saved links, media, notes, and hobby projects — stored as plain Markdown and shared directly with AI agents.**
 
-**The app and your library are separate.** Clone this repository for the software; your own content lives in `~/Cabinet` by default, or any folder you choose. A new library starts empty. The included `sample-library/` and screenshots contain synthetic demo content.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-24.12%2B%20%28tested%20on%2026%29-339933.svg)](https://nodejs.org/)
+[![MCP](https://img.shields.io/badge/MCP-stdio%20%26%20HTTP-6e56cf.svg)](docs/AGENTS-MCP.md)
+
+[What it is](#what-is-cabinet) · [Why](#why-cabinet) · [How it works](#how-it-works) · [User flow](#user-flow) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Technical details](#technical-details)
 
 ![Cabinet home: a search-and-save bar, your projects, and items to revisit](docs/screenshots/01-home.png)
 
-## Start locally
+---
 
-Install **Node.js 26**, **pnpm 10.32.1** and **Git**, then:
+## What is Cabinet?
+
+Cabinet is a personal research hub, project workbench, and memory layer for AI agents that runs locally on your machine.
+
+Instead of scattering articles in browser tabs, quotes in chat logs, PDFs in folders, and project checklists in separate tools, Cabinet brings them together in one place — backed entirely by ordinary Markdown files and attachments on your disk. Your reading, your writing, and the context your AI agents need all live in the same library.
+
+## Why Cabinet?
+
+Most personal knowledge tools break down along the same three seams:
+
+- **Bookmark and read-it-later tools hide *why* you cared.** Saving a link without context turns into a graveyard of unread URLs, locked inside someone else's database. Cabinet asks why you saved something up front and keeps the extracted text, attachment, and your notes together as plain files.
+- **General note-taking tools struggle with rich capture and active projects.** Writing notes is easy; pulling in clean article extracts, PDF text, timestamped videos, images, and transcribed voice notes — then organizing them around an ongoing hobby or build with open questions and checklists — usually takes fragile plugins or manual copy-pasting.
+- **AI assistants start every session with amnesia.** Your research sits in one place while your coding and chat agents live in another. Cabinet exposes your library over [MCP](docs/AGENTS-MCP.md) so agents can pull project context, search past captures, and commit atomic memories back to your files with clear attribution.
+
+## How it works
+
+Cabinet intentionally separates **the application** from **your library**:
+
+```mermaid
+flowchart LR
+    Inputs["Web UI, CLI & Telegram"] --> Server["Cabinet Server"]
+    Server <--> Library["Your Library Folder (~/Cabinet)"]
+    Server <--> Index["Local SQLite Index (FTS5 + Vectors)"]
+    Agents["AI Agents via MCP (stdio / HTTP)"] <--> Server
+    Optional["Optional AI & Speech (Ollama / API · whisper.cpp)"] <--> Server
+```
+
+1. **Your library is just a folder** (`~/Cabinet` by default, outside this repository). Everything you save is stored as human-readable Markdown with YAML frontmatter, `[[wikilinks]]`, and original attachments, versioned automatically in a local Git repository.
+2. **Cabinet runs locally on top of your files.** A single Node process serves the web UI, watches for external edits from any text editor, and maintains a disposable SQLite index (`.cabinet/index.sqlite`) that can be deleted and rebuilt from your Markdown files at any time.
+3. **Optional layers plug in when you want them.** Core capture, reading, editing, `[[linking]]`, and keyword search work offline with zero AI setup. Add **Ollama** (or your own Anthropic/OpenAI key) for semantic search, library chat, and suggested enrichment; connect **MCP** for AI agents; or pair a **Telegram bot** with local `whisper.cpp` for mobile and voice capture.
+
+## User flow
+
+1. **Capture anything with context** — Paste a URL, drop an image or PDF, jot a quote, or send a voice note from Telegram. Record *why* you saved it and connect it to existing items while articles/PDFs/audio are extracted in the background.
+2. **Think in linked Markdown** — Read clean extracted content side-by-side with your own notes, link ideas with `[[wikilinks]]`, inspect backlinks, and explore connections in a focused neighborhood graph.
+3. **Organize living projects** — Group relevant sources into project sections with per-project context, track open questions, and work through checklists without duplicating underlying files.
+4. **Recall and collaborate with agents** — Find anything via keyword or meaning search with match explanations, ask cited questions against your library, or let MCP agents read briefings (`get_context`) and save durable `memories/` as tracked Git commits.
+
+## Screenshots
+
+All screenshots below use the included synthetic demo library (`sample-library/`). See the [full screenshot walkthrough](docs/screenshots/README.md) for every screen.
+
+| | |
+| --- | --- |
+| ![Saving a link with a reason and suggested connections](docs/screenshots/02-capture-sheet.png)<br>**Capture** a link, record why you saved it, and link it to existing items. | ![An extracted article with notes and connections](docs/screenshots/03-article.png)<br>**Read** extracted articles alongside your notes and connections. |
+| ![A project with material sections, checklist and questions](docs/screenshots/08-project.png)<br>**Projects** organize material into sections with checklists and open questions. | ![The graph around one project](docs/screenshots/07-graph.png)<br>**Graph** visualizes local neighborhoods around any item or project. |
+| ![A linked Markdown note in the editor](docs/screenshots/05-note-editor.png)<br>**Notes** use plain Markdown with `[[links]]` and live backlinks. | ![Search results with match explanations](docs/screenshots/11-search.png)<br>**Search** explains exactly where and why each result matched. |
+
+## Quick start
+
+### Prerequisites
+
+- **Node.js 24.12+** (tested with **Node 26**)
+- **pnpm 10.32.1** (`npm install -g pnpm@10.32.1`)
+- **Git**
+
+### Run locally
 
 ```sh
 git clone https://github.com/latrael/cabinet.git
@@ -19,9 +79,20 @@ pnpm cabinet init "$HOME/Cabinet"
 pnpm start
 ```
 
-Open **http://localhost:4747**. The repository is currently private; cloning requires access. Node 24.12+ is supported by the package requirement; this release was tested with Node 26.
+Open **[http://localhost:4747](http://localhost:4747)**. Your library starts empty at `~/Cabinet` and stays completely separate from the cloned app repository.
 
-For another library location:
+<details>
+<summary>Try it with the sample library (without touching your own folder)</summary>
+
+```sh
+pnpm cabinet init "$HOME/Cabinet-Demo" --sample
+pnpm cabinet start --library "$HOME/Cabinet-Demo" --no-ai --no-telegram
+```
+
+</details>
+
+<details>
+<summary>Use a custom library path</summary>
 
 ```sh
 pnpm cabinet path "/absolute/path/to/My Cabinet"
@@ -29,56 +100,56 @@ pnpm cabinet init
 pnpm start
 ```
 
-To try the demo separately, initialize a new folder with `--sample` and pass it explicitly when starting:
+</details>
 
-```sh
-pnpm cabinet init "$HOME/Cabinet-Demo" --sample
-pnpm cabinet start --library "$HOME/Cabinet-Demo" --no-ai --no-telegram
-```
+<details>
+<summary>Run with Docker</summary>
 
-## What it does
+The container image includes the built web app, Node, Git, `ffmpeg`, and `whisper.cpp`. Your library and optional speech models are host-mounted so nothing personal is baked into the image.
 
-- Capture links, quotes, text, images, PDFs and audio; add why you saved them and connect them to existing items.
-- Write notes with `[[links]]`, backlinks and a focused graph.
-- Organize projects using material sections, per-project context, questions and checklists.
-- Search locally by keywords; add Ollama for meaning search, cited chat and suggested enrichment.
-- Let agents use your library through MCP, with per-agent tokens for HTTP access.
-- Capture from Telegram, including locally transcribed voice notes.
-- Keep ordinary Markdown and attachments with local git history, external-edit watching and export/restore.
+Follow the [Docker setup guide](docs/SETUP.md#docker) to configure `.env`, initialize your library, set an access passphrase, and start via `docker compose`.
 
-Core capture, reading, editing and keyword search work without AI. Fetching new URLs and Telegram require internet access. Ollama is the default AI provider; optional Anthropic/OpenAI providers use your own API keys. Voice transcription needs ffmpeg, whisper.cpp and a model.
+</details>
 
-## A look around
+## Technical details
 
-All screenshots use the synthetic demo library and are regenerated by the browser tests.
-
-| | |
-| --- | --- |
-| ![Saving a link with a reason and suggested connections](docs/screenshots/02-capture-sheet.png)<br>**Save** a link, say why, and connect it to what you already have. | ![An extracted article with notes and connections](docs/screenshots/03-article.png)<br>**Read** the extracted article beside your notes and its links. |
-| ![A project with material sections, checklist and questions](docs/screenshots/08-project.png)<br>**Projects** gather material into sections with a checklist, questions and notes. | ![The graph around one project](docs/screenshots/07-graph.png)<br>**Graph** shows what an item connects to. |
-| ![A linked Markdown note in the editor](docs/screenshots/05-note-editor.png)<br>**Notes** are plain Markdown with `[[links]]`. | ![Search results with match explanations](docs/screenshots/11-search.png)<br>**Search** says where each result matched. |
-
-The [full set](docs/screenshots/README.md) covers every flow.
-
-## Guides
+### Guides & documentation
 
 | Guide | Covers |
 | --- | --- |
-| [Setup](docs/SETUP.md) | Native installation, Docker, macOS launchd, models, configuration, backups and updates |
-| [Storage](docs/STORAGE.md) | Files, frontmatter, links, projects, git and generated/private state |
-| [Agents and MCP](docs/AGENTS-MCP.md) | Claude Code/Desktop, stdio, HTTP and tool reference |
-| [Telegram](docs/TELEGRAM.md) | Bot pairing, capture and local voice transcription |
-| [Limitations](docs/LIMITATIONS.md) | Current boundaries and exactly what was verified |
-| [Screenshots](docs/screenshots/README.md) | Capture, reader, editor, projects, graph, search and Settings |
-| [Build plan](PLAN.md) | Milestones and completion record |
+| [Setup](docs/SETUP.md) | Native install, Docker, macOS `launchd`, Ollama/AI keys, network access, backups, and restore |
+| [Storage format](docs/STORAGE.md) | Folder layout, YAML frontmatter schema, `[[links]]`, project syntax, Git history, and `.cabinet/` internals |
+| [Agents & MCP](docs/AGENTS-MCP.md) | Local `stdio` and authenticated HTTP `/mcp` setup, agent Git attribution, and full MCP tool reference |
+| [Telegram & voice](docs/TELEGRAM.md) | Long-polling bot pairing, mobile capture, and local `whisper.cpp` transcription |
+| [Limitations](docs/LIMITATIONS.md) | Current scope, security model, backup caveats, and verification boundaries |
+| [Screenshots](docs/screenshots/README.md) | Complete visual tour of capture, reader, editor, projects, graph, search, Settings, and Telegram |
 
-## Docker
+### Repository layout
 
-The image includes the built web app, Node, Git, ffmpeg and whisper.cpp. Your library and speech model are host-mounted; neither is baked into the image.
+```text
+cabinet/
+  apps/
+    web/            React + Vite + Tailwind web client (CodeMirror 6 editor, d3-force graph)
+    server/         Hono HTTP API, SSE live updates, capture pipeline, auth, Telegram bot
+    cli/            `cabinet` CLI (`init`, `start`, `mcp`, `path`, `token`, `rebuild`, `export`, `restore`)
+  packages/
+    core/           Markdown/frontmatter parser, link resolver, node:sqlite FTS5 index, watcher, git
+    ai/             Provider abstraction (Ollama / Anthropic / OpenAI), embeddings, chat, whisper
+    mcp/            MCP server tools & resources (`stdio` and Streamable HTTP)
+  sample-library/   Synthetic demo library
+  docs/             Setup, storage, MCP, Telegram, and verification docs
+  e2e/              Playwright browser tests
+```
 
-Follow the [Docker setup guide](docs/SETUP.md#docker) to set the initial passphrase and mount a parent data folder that supports restore backups. Compose publishes port 4747 on host localhost by default.
+### Development & checks
 
-## Development and checks
+For local development, set `CABINET_LIBRARY` to a separate test folder before starting Vite (`:5173`, proxying API requests to `:4747`):
+
+```sh
+CABINET_LIBRARY="$HOME/Cabinet-Demo" pnpm dev
+```
+
+Run the full check suite:
 
 ```sh
 pnpm test
@@ -89,6 +160,6 @@ pnpm exec playwright install chromium
 pnpm e2e
 ```
 
-Browser tests use temporary copies of the demo library. For development, set `CABINET_LIBRARY` to a separate demo folder before running `pnpm dev`; Vite runs on port 5173 and proxies API requests to the server on 4747. `pnpm dev` otherwise opens your configured/default library.
+### License
 
-Milestones 0–10 are implemented. See [Limitations](docs/LIMITATIONS.md) for verification boundaries. MIT licensed; see [LICENSE](LICENSE).
+[MIT](LICENSE)
