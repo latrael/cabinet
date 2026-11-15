@@ -84,12 +84,24 @@ export class AutoCommitter {
     return this.running;
   }
 
+  /** Retry git commands when another process (e.g. an MCP stdio server) holds the index lock. */
+  private async retry<T>(fn: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fn();
+      } catch (e) {
+        if (attempt >= 6 || !/index\.lock|unable to create .*lock/i.test(String((e as Error).message))) throw e;
+        await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+      }
+    }
+  }
+
   private async commitBatch(batch: Map<Author, Pending>) {
     let committed = false;
     for (const [author, p] of batch) {
       const files = [...p.paths];
       if (!files.length) continue;
-      await this.git.raw(['add', '-A', '--', ...files]);
+      await this.retry(() => this.git.raw(['add', '-A', '--', ...files]));
       const staged = (await this.git.raw(['diff', '--cached', '--name-only'])).trim();
       if (!staged) continue;
       const notes = [...p.notes];
@@ -97,7 +109,7 @@ export class AutoCommitter {
         notes.length === 1 ? `${author}: ${notes[0]}` : notes.length ? `${author}: ${notes.length} changes` : `${author}: update ${files.length} file(s)`;
       const body = notes.length > 1 ? '\n\n' + notes.map((n) => `- ${n}`).join('\n') : '';
       const id = authorIdentity(author);
-      await this.git.raw(['commit', '-q', '-m', subject + body, `--author=${id.name} <${id.email}>`]);
+      await this.retry(() => this.git.raw(['commit', '-q', '-m', subject + body, `--author=${id.name} <${id.email}>`, '--', ...files]));
       committed = true;
       this.opts.onCommit?.({ author, message: subject, files });
     }

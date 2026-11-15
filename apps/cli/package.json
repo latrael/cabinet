@@ -11,6 +11,7 @@
     "@cabinet/ai": "workspace:*",
     "@cabinet/core": "workspace:*",
     "@cabinet/mcp": "workspace:*",
-    "@cabinet/server": "workspace:*"
+    "@cabinet/server": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
   }
 }

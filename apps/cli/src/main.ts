@@ -100,7 +100,7 @@ async function main() {
     }
 
     case 'mcp': {
-      const { runStdio } = await import('@cabinet/mcp');
+      const { runStdio } = await import('./mcp-stdio.ts');
       await runStdio({ library, agent: values.agent ?? process.env.CABINET_AGENT ?? 'claude', ai: !values['no-ai'] });
       return;
     }

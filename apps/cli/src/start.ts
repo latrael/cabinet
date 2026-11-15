@@ -53,7 +53,7 @@ async function loadIntegrations(): Promise<{
     /* MCP optional */
   }
   try {
-    const tg = await import('@cabinet/server/telegram' as string);
+    const tg = await import('@cabinet/server/telegram');
     if (tg.telegramPlugin) out.telegram = (ctx) => tg.telegramPlugin(ctx);
   } catch {
     /* Telegram optional */
