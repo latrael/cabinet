@@ -51,6 +51,7 @@ export function GraphCanvas({
   const canvas = useRef<HTMLCanvasElement>(null);
   const positions = useRef(new Map<string, { x: number; y: number }>());
   const view = useRef({ x: 0, y: 0, k: 1 });
+  const userMoved = useRef(false);
   const cbs = useRef({ onSelect, onOpen });
   cbs.current = { onSelect, onOpen };
 
@@ -89,6 +90,19 @@ export function GraphCanvas({
       centerNode.fy = 0;
     }
     let hover: N | null = null;
+    let fitted = !!userMoved.current;
+    /** Zoom so the whole neighbourhood is visible, once, unless the user already panned/zoomed. */
+    const fit = () => {
+      if (fitted || !nodes.length) return;
+      fitted = true;
+      const xs = nodes.map((n) => n.x!);
+      const ys = nodes.map((n) => n.y!);
+      const pad = labels ? 90 : 24;
+      const w = Math.max(...xs) - Math.min(...xs) + pad * 2;
+      const h = Math.max(...ys) - Math.min(...ys) + pad * 2;
+      const k = Math.max(0.35, Math.min(1.6, Math.min(width / w, height / h)));
+      view.current = { k, x: -((Math.max(...xs) + Math.min(...xs)) / 2) * k, y: -((Math.max(...ys) + Math.min(...ys)) / 2) * k };
+    };
 
     const draw = () => {
       const { x: tx, y: ty, k } = view.current;
@@ -133,15 +147,17 @@ export function GraphCanvas({
     };
 
     const sim = forceSimulation<N>(nodes)
-      .force('link', forceLink<N, L>(links).id((d) => d.id).distance(nodes.length > 60 ? 50 : 80).strength(0.6))
-      .force('charge', forceManyBody().strength(nodes.length > 60 ? -120 : -260))
-      .force('collide', forceCollide<N>().radius((d) => d.r + 10))
+      .force('link', forceLink<N, L>(links).id((d) => d.id).distance(labels ? (nodes.length > 60 ? 70 : 125) : 50).strength(0.5))
+      .force('charge', forceManyBody().strength(labels ? (nodes.length > 60 ? -200 : -520) : -160))
+      .force('collide', forceCollide<N>().radius((d) => d.r + (labels ? 30 : 8)))
       .force('center', forceCenter(0, 0).strength(0.05))
       .alpha(positions.current.size ? 0.4 : 1)
       .on('tick', () => {
         for (const n of nodes) positions.current.set(n.id, { x: n.x!, y: n.y! });
+        if (!fitted && sim.alpha() < 0.25) fit();
         draw();
-      });
+      })
+      .on('end', () => fit());
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       sim.stop();
       for (let i = 0; i < 200; i++) sim.tick();
@@ -194,6 +210,7 @@ export function GraphCanvas({
       } else {
         view.current.x = drag.vx + dx;
         view.current.y = drag.vy + dy;
+        userMoved.current = true;
         draw();
       }
     };
@@ -217,6 +234,7 @@ export function GraphCanvas({
       ev.preventDefault();
       const k = Math.max(0.3, Math.min(3, view.current.k * (ev.deltaY < 0 ? 1.1 : 0.9)));
       view.current.k = k;
+      userMoved.current = true;
       draw();
     };
     el.addEventListener('pointerdown', down);
