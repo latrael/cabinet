@@ -34,7 +34,7 @@ export function DigestPanel() {
   };
   if (status.data?.provider === 'none' || (!d && !status.data?.chat)) return null;
   return (
-    <section className="mb-6 rounded-[4px] border border-lamp/30 bg-lamp-wash/40 px-5 py-4" data-testid="digest">
+    <section className="mb-6 border border-lamp/30 bg-lamp-wash/40 px-5 py-4" data-testid="digest">
       <div className="flex flex-wrap items-center gap-2">
         <Sparkles size={15} className="text-brass" />
         <h2 className="font-serif text-[17px]">Inbox agent</h2>
@@ -63,7 +63,7 @@ export function DigestPanel() {
           {triage.data!.map((s) => {
             const Icon = TYPE_ICON[s.item.type];
             return (
-              <li key={s.id} className="flex items-start gap-2.5 rounded-[3px] bg-card px-3 py-2 text-[13.5px] shadow-[var(--shadow-card)]" data-testid="triage">
+              <li key={s.id} className="flex items-start gap-2.5 bg-card px-3 py-2 text-[13.5px] shadow-[var(--shadow-card)]" data-testid="triage">
                 <Icon size={14} className="mt-0.5 shrink-0 text-faded" />
                 <div className="min-w-0 flex-1">
                   <Link to="/item/$id" params={{ id: s.item.id }} className="font-serif text-[15px] hover:text-lamp">

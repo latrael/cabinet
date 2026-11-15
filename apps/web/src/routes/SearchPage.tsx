@@ -64,7 +64,7 @@ export function SearchPage() {
                 <div className="flex items-baseline gap-2">
                   <Icon size={14} className="shrink-0 translate-y-0.5 text-faded" />
                   <span className="font-serif text-[17px] group-hover:text-lamp">{h.item.title}</span>
-                  <span className="ml-auto shrink-0 rounded-sm bg-paper-deep px-1.5 text-[11.5px] text-ink-soft" data-testid="match-field">
+                  <span className="ml-auto shrink-0 bg-paper-deep px-1.5 text-[11.5px] text-ink-soft" data-testid="match-field">
                     matched {MATCH_LABELS[h.field]}
                   </span>
                 </div>

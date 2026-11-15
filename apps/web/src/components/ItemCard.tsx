@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { ItemSummary } from '../lib/api.ts';
 import { thumbUrl } from '../lib/api.ts';
-import { host, relTime, tabPosition, TYPE_ICON, TYPE_LABEL } from '../lib/meta.ts';
+import { host, relTime, TYPE_ICON, TYPE_LABEL } from '../lib/meta.ts';
 
 function coverSrc(i: ItemSummary): string | undefined {
   if (i.cover) return i.cover;
@@ -10,15 +10,12 @@ function coverSrc(i: ItemSummary): string | undefined {
   return undefined;
 }
 
+/** The small uppercase type label that sits above a headline. */
 export function TypeTab({ type, label }: { type: ItemSummary['type']; label?: string }) {
-  return (
-    <span className="tab" style={{ ['--tab-x' as any]: tabPosition(type) }} aria-hidden>
-      {label ?? TYPE_LABEL[type]}
-    </span>
-  );
+  return <span className="kicker">{label ?? TYPE_LABEL[type]}</span>;
 }
 
-/** An index card. Image items lead with the picture; text items with their words. */
+/** One cell of the item grid: label line, headline, a sentence, then tags. Nothing moves on hover. */
 export function ItemCard({
   item,
   footer,
@@ -35,44 +32,40 @@ export function ItemCard({
   const cover = coverSrc(item);
   const Icon = TYPE_ICON[item.type];
   const isQuote = item.type === 'quote';
+  const source = item.site ?? host(item.url) ?? (item.type === 'project' ? (item.projectStatus ?? 'active') : undefined);
   return (
-    <article className="card card-interactive group mt-3" data-item={item.slug} data-type={item.type} draggable={draggable}>
-      <TypeTab type={item.type} />
-      <Link to="/item/$id" params={{ id: item.id }} className="block focus-visible:outline-offset-4" onClick={onClick} draggable={false}>
+    <article className="item-cell group flex flex-col" data-item={item.slug} data-type={item.type} draggable={draggable}>
+      <Link to="/item/$id" params={{ id: item.id }} className="block" onClick={onClick} draggable={false}>
+        <div className="kicker mb-2 flex items-center gap-1.5">
+          <Icon size={12} strokeWidth={1.8} aria-hidden />
+          <span className="truncate">
+            {TYPE_LABEL[item.type]}
+            {source && <span className="font-medium tracking-[0.04em] normal-case"> / {source}</span>}
+          </span>
+          <span className="ml-auto shrink-0 font-medium tracking-[0.04em] normal-case">{relTime(item.created)}</span>
+        </div>
         {cover && !compact && (
-          <div className={`overflow-hidden rounded-t-[2px] bg-paper-deep ${item.type === 'pdf' ? 'max-h-48 border-b border-rule' : ''}`}>
-            <img src={thumbUrl(cover, 480)} alt="" loading="lazy" className="block w-full object-cover" draggable={false} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
+          <div className="mb-3 aspect-[3/2] overflow-hidden bg-paper-deep">
+            <img src={thumbUrl(cover, 480)} alt="" loading="lazy" className="block h-full w-full object-cover" draggable={false} onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')} />
           </div>
         )}
-        <div className="px-3.5 pt-3 pb-3">
-          {isQuote && item.excerpt ? (
-            <blockquote className="font-serif text-[16px] leading-snug text-ink italic">“{item.excerpt.replace(/^[>\s“"]+|[”"]+$/g, '')}”</blockquote>
-          ) : (
-            <h3 className="font-serif text-[16.5px] leading-snug text-ink">{item.title}</h3>
-          )}
-          {item.why && <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">{item.why.replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (_m, a: string, b: string) => b || a.replace(/-/g, ' '))}</p>}
-          {!item.why && !isQuote && item.excerpt && !compact && <p className="mt-1.5 line-clamp-3 text-[13px] leading-snug text-faded">{item.excerpt}</p>}
-          <div className="card-rule mt-2.5 mb-2" />
-          <div className="flex items-center gap-2 text-[11.5px] text-faded">
-            <Icon size={12} strokeWidth={1.8} aria-hidden />
-            <span className="truncate">{item.site ?? host(item.url) ?? (item.type === 'project' ? (item.projectStatus ?? 'active') : TYPE_LABEL[item.type])}</span>
+        {isQuote && item.excerpt ? (
+          <blockquote className="item-title font-serif text-[18px] leading-[1.3] text-ink italic">“{item.excerpt.replace(/^[>\s“"]+|[”"]+$/g, '')}”</blockquote>
+        ) : (
+          <h3 className="item-title font-serif text-[19px] leading-[1.22] text-ink">{item.title}</h3>
+        )}
+        {item.why && <p className="mt-1.5 font-serif text-[14.5px] leading-snug text-ink-soft">{item.why.replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (_m, a: string, b: string) => b || a.replace(/-/g, ' '))}</p>}
+        {!item.why && !isQuote && item.excerpt && !compact && <p className="mt-1.5 line-clamp-3 font-serif text-[14.5px] leading-snug text-faded">{item.excerpt}</p>}
+        {(item.extraction === 'pending' || item.extraction === 'failed' || item.status === 'inbox' || (item.tags.length > 0 && !compact)) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-faded">
             {item.extraction === 'pending' && <span className="text-brass">fetching…</span>}
             {item.extraction === 'failed' && <span className="text-alert">needs content</span>}
-            {item.status === 'inbox' && <span className="rounded-sm bg-lamp-wash px-1 text-lamp">inbox</span>}
-            <span className="ml-auto shrink-0">{relTime(item.created)}</span>
+            {item.status === 'inbox' && <span className="font-semibold text-lamp">In inbox</span>}
+            {!compact && item.tags.slice(0, 4).map((t) => <span key={t}>#{t}</span>)}
           </div>
-          {item.tags.length > 0 && !compact && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {item.tags.slice(0, 4).map((t) => (
-                <span key={t} className="text-[11.5px] text-lamp">
-                  #{t}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </Link>
-      {footer && <div className="border-t border-rule px-3.5 py-2">{footer}</div>}
+      {footer && <div className="mt-auto pt-3">{footer}</div>}
     </article>
   );
 }
@@ -91,7 +84,7 @@ export function ItemRow({ item, right, onClick }: { item: ItemSummary; right?: R
       </Link>
       <div className="hidden shrink-0 gap-1 md:flex">
         {item.tags.slice(0, 3).map((t) => (
-          <span key={t} className="text-[11.5px] text-lamp">
+          <span key={t} className="text-[11.5px] text-faded">
             #{t}
           </span>
         ))}

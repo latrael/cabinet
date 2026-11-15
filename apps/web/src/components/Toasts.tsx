@@ -7,8 +7,8 @@ export function Toasts() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex items-center gap-3 rounded-[3px] px-4 py-2.5 text-[13.5px] shadow-[var(--shadow-lift)] ${
-            t.tone === 'error' ? 'bg-alert text-[#fbefe9]' : 'bg-ink text-[#f3ecdc]'
+          className={`pointer-events-auto flex items-center gap-3 px-4 py-2.5 text-[13.5px] shadow-[var(--shadow-lift)] ${
+            t.tone === 'error' ? 'bg-alert text-white' : 'bg-ink text-white'
           }`}
         >
           <span>{t.text}</span>

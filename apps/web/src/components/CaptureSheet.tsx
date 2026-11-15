@@ -34,9 +34,9 @@ export function CaptureSheet() {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && setUi({ capture: null })}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.28)] data-[state=open]:animate-[fadeIn_120ms_ease]" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.28)] data-[state=open]:animate-[fadeIn_120ms_ease]" />
         <Dialog.Content
-          className="fixed top-[6vh] left-1/2 z-50 flex max-h-[88vh] w-[min(640px,94vw)] -translate-x-1/2 flex-col overflow-hidden rounded-[4px] border border-rule-strong bg-paper shadow-[var(--shadow-sheet)] focus:outline-none"
+          className="fixed top-[6vh] left-1/2 z-50 flex max-h-[88vh] w-[min(640px,94vw)] -translate-x-1/2 flex-col overflow-hidden border border-rule-strong bg-paper shadow-[var(--shadow-sheet)] focus:outline-none"
           aria-describedby={undefined}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -205,7 +205,7 @@ function CaptureForm({ seed }: { seed: CaptureSeed }) {
       <div className="min-h-0 overflow-y-auto px-5 py-4">
         {/* Optimistic preview card */}
         <div className="card mt-2 flex gap-3.5 p-3" data-testid="capture-preview">
-          <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[2px] bg-paper-deep">
+          <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden bg-paper-deep">
             {imgUrl ? (
               <img src={imgUrl} alt="" className="h-full w-full object-cover" />
             ) : p.image ? (
@@ -287,7 +287,7 @@ function CaptureForm({ seed }: { seed: CaptureSeed }) {
         </div>
 
         {project && (
-          <div className="mt-4 rounded-[3px] border border-rule bg-card/60 p-3">
+          <div className="mt-4 border border-rule bg-card/60 p-3">
             <div className="mb-2 flex items-center gap-2 text-[13px] text-ink-soft">
               <FolderKanban size={14} /> In <strong className="font-semibold">{project.title}</strong>
             </div>
@@ -323,11 +323,11 @@ function CaptureForm({ seed }: { seed: CaptureSeed }) {
                   <li key={h.item.id}>
                     <button
                       type="button"
-                      className={`flex w-full items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-left text-[14px] hover:bg-card ${on ? 'text-lamp' : 'text-ink'}`}
+                      className={`flex w-full items-center gap-2.5 px-2 py-1.5 text-left text-[14px] hover:bg-card ${on ? 'text-lamp' : 'text-ink'}`}
                       onClick={() => setLinks((l) => (l.includes(h.item.id) ? l.filter((x) => x !== h.item.id) : [...l, h.item.id]))}
                       aria-pressed={on}
                     >
-                      <span className={`flex h-4 w-4 items-center justify-center rounded-[2px] border ${on ? 'border-lamp bg-lamp text-card' : 'border-rule-strong'}`}>{on && <Check size={11} strokeWidth={3} />}</span>
+                      <span className={`flex h-4 w-4 items-center justify-center border ${on ? 'border-ink bg-ink text-card' : 'border-rule-strong'}`}>{on && <Check size={11} strokeWidth={3} />}</span>
                       <Icon size={13} className="shrink-0 text-faded" />
                       <span className="truncate font-serif">{h.item.title}</span>
                       <span className="ml-auto shrink-0 text-[11.5px] text-faded">{on ? 'linked' : 'link'}</span>

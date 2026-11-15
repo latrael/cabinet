@@ -4,7 +4,6 @@ import { FolderKanban, Plus } from 'lucide-react';
 import { api, thumbUrl, type ItemSummary } from '../lib/api.ts';
 import { relTime } from '../lib/meta.ts';
 import { setUi } from '../lib/store.ts';
-import { TypeTab } from '../components/ItemCard.tsx';
 
 export function ProjectsPage() {
   const q = useQuery({ queryKey: ['items', 'projects', 'all'], queryFn: () => api<{ items: ItemSummary[] }>('/api/items?type=project&sort=updated&limit=200') });
@@ -27,26 +26,29 @@ export function ProjectsPage() {
         if (!list.length) return null;
         return (
           <section key={g} className="mb-10">
-            <h2 className="section-title mb-4 capitalize">{g}</h2>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
+            <h2 className="section-title">{g}</h2>
+            <div className="item-grid">
               {list.map((p) => (
-                <Link key={p.id} to="/item/$id" params={{ id: p.id }} className="card card-interactive mt-3 block" data-item={p.slug}>
-                  <TypeTab type="project" />
-                  <div className="flex h-32 items-center justify-center overflow-hidden rounded-t-[2px] bg-paper-deep">
-                    {p.cover ? <img src={thumbUrl(p.cover, 480)} alt="" className="h-full w-full object-cover" /> : <FolderKanban size={24} className="text-faded" />}
-                  </div>
-                  <div className="px-4 py-3">
-                    <h3 className="font-serif text-[18px]">{p.title}</h3>
-                    {p.excerpt && <p className="mt-1 line-clamp-2 text-[13px] text-ink-soft">{p.excerpt}</p>}
-                    <div className="card-rule mt-2.5 mb-1.5" />
-                    <div className="text-[11.5px] text-faded">changed {relTime(p.updated)}</div>
-                  </div>
-                </Link>
+                <ProjectCell key={p.id} project={p} />
               ))}
             </div>
           </section>
         );
       })}
     </div>
+  );
+}
+
+/** A project in the item grid: cover, name, what it is for, when it last changed. */
+export function ProjectCell({ project: p }: { project: ItemSummary }) {
+  return (
+    <Link to="/item/$id" params={{ id: p.id }} className="item-cell block" data-item={p.slug}>
+      <div className="mb-3 flex aspect-[3/2] items-center justify-center overflow-hidden bg-paper-deep">
+        {p.cover ? <img src={thumbUrl(p.cover, 480)} alt="" className="h-full w-full object-cover" /> : <FolderKanban size={22} strokeWidth={1.5} className="text-faded" />}
+      </div>
+      <h3 className="item-title font-serif text-[21px] leading-[1.2]">{p.title}</h3>
+      {p.excerpt && <p className="mt-1.5 line-clamp-2 font-serif text-[14.5px] leading-snug text-ink-soft">{p.excerpt}</p>}
+      <div className="mt-2 text-[11.5px] text-faded">Changed {relTime(p.updated)}</div>
+    </Link>
   );
 }

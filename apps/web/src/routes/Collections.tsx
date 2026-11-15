@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Shapes } from 'lucide-react';
 import { api, thumbUrl, type ItemDetail, type ItemSummary } from '../lib/api.ts';
 import type { useItem } from '../lib/useItem.ts';
-import { ItemCard, TypeTab } from '../components/ItemCard.tsx';
+import { ItemCard } from '../components/ItemCard.tsx';
 import { Editor } from '../editor/Editor.tsx';
 import { ItemMenu } from './ItemPage.tsx';
 
@@ -24,17 +24,16 @@ export function CollectionsPage() {
         <p className="text-[14px] text-faded">Loose groupings. Add any item to a collection from its page or while saving.</p>
       </header>
       {q.isSuccess && q.data.collections.length === 0 && <p className="text-[15px] text-faded">No collections yet.</p>}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-6">
+      <div className="item-grid">
         {q.data?.collections.map((c) => {
           const covers = [c.doc?.cover, ...c.sample.map((s) => s.cover ?? (s.type === 'image' ? s.attachment : undefined))].filter(Boolean).slice(0, 3) as string[];
           return (
-            <Link key={c.name} to="/collections/$name" params={{ name: c.name }} className="card card-interactive mt-3 block">
-              <TypeTab type="collection" />
-              <div className="flex h-28 gap-px overflow-hidden rounded-t-[2px] bg-paper-deep">
+            <Link key={c.name} to="/collections/$name" params={{ name: c.name }} className="item-cell block">
+              <div className="mb-3 flex aspect-[3/2] gap-px overflow-hidden bg-paper-deep">
                 {covers.length ? covers.map((src) => <img key={src} src={thumbUrl(src, 300)} alt="" className="h-full min-w-0 flex-1 object-cover" />) : <Shapes className="m-auto text-faded" />}
               </div>
-              <div className="px-4 py-3">
-                <h3 className="font-serif text-[18px]">{c.name}</h3>
+              <div>
+                <h3 className="item-title font-serif text-[21px] leading-[1.2]">{c.name}</h3>
                 <p className="text-[12.5px] text-faded">
                   {c.count} {c.count === 1 ? 'item' : 'items'}
                 </p>
@@ -57,7 +56,7 @@ export function CollectionPage() {
   return (
     <div>
       <header className="mb-6">
-        <span className="text-[12.5px] font-semibold text-brass">Collection</span>
+        <span className="kicker">Collection</span>
         <h1 className="font-serif text-[32px] leading-tight">{name}</h1>
         {c?.doc ? (
           <p className="mt-1 max-w-prose font-serif text-[16px] text-ink-soft">
@@ -82,7 +81,7 @@ export function CollectionPage() {
           </form>
         )}
       </header>
-      <div className="masonry">
+      <div className="item-grid">
         {items.data?.items.filter((i) => i.type !== 'collection').map((i) => <ItemCard key={i.id} item={i} />)}
       </div>
     </div>
@@ -98,7 +97,7 @@ export function CollectionView({ it }: { it: ReturnType<typeof useItem> }) {
   return (
     <div>
       <div className="mb-1 flex items-center">
-        <span className="text-[12.5px] font-semibold text-brass">Collection</span>
+        <span className="kicker">Collection</span>
         <span className="ml-auto">
           <ItemMenu item={d.item} />
         </span>
@@ -107,7 +106,7 @@ export function CollectionView({ it }: { it: ReturnType<typeof useItem> }) {
       <div className="mt-2 max-w-2xl" onBlur={() => body !== d.item.body && void it.mutate(() => ({ body }))}>
         <Editor value={body} onChange={setBody} placeholder="Describe this collection" ariaLabel="Collection description" />
       </div>
-      <div className="masonry mt-8">
+      <div className="item-grid mt-8">
         {members.data?.items.filter((i) => i.id !== d.item.id).map((i) => <ItemCard key={i.id} item={i} />)}
       </div>
     </div>

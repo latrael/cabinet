@@ -50,7 +50,7 @@ export function TagInput({ value, onChange, placeholder = 'Add a tag' }: { value
         />
       </div>
       {focus && suggestions.length > 0 && (
-        <div className="absolute top-full right-0 left-0 z-10 mt-1 rounded-[3px] border border-rule-strong bg-card py-1 shadow-[var(--shadow-lift)]">
+        <div className="absolute top-full right-0 left-0 z-10 mt-1 border border-rule-strong bg-card py-1 shadow-[var(--shadow-lift)]">
           {suggestions.map((s) => (
             <button key={s.tag} type="button" className="flex w-full justify-between px-3 py-1 text-left text-[13px] hover:bg-paper" onMouseDown={(e) => e.preventDefault()} onClick={() => add(s.tag)}>
               <span>#{s.tag}</span>

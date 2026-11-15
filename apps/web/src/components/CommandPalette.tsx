@@ -23,10 +23,10 @@ export function CommandPalette() {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => setUi({ palette: o, paletteMode: 'search' })}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(43,40,35,0.22)]" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.22)]" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed top-[12vh] left-1/2 z-50 w-[min(600px,94vw)] -translate-x-1/2 overflow-hidden rounded-[4px] border border-rule-strong bg-card shadow-[var(--shadow-sheet)] focus:outline-none"
+          className="fixed top-[12vh] left-1/2 z-50 w-[min(600px,94vw)] -translate-x-1/2 overflow-hidden border border-rule-strong bg-card shadow-[var(--shadow-sheet)] focus:outline-none"
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
           {mode === 'new-project' ? <NewProjectForm /> : <PaletteSearch />}
@@ -126,13 +126,13 @@ function PaletteSearch() {
           return (
             <li key={r.kind === 'item' ? r.item.id : r.action.id} role="option" aria-selected={i === sel}>
               <button
-                className={`flex w-full items-center gap-3 px-4 py-2 text-left text-[14.5px] ${i === sel ? 'bg-lamp text-[#f6f1e4]' : 'text-ink'}`}
+                className={`flex w-full items-center gap-3 px-4 py-2 text-left text-[14.5px] ${i === sel ? 'bg-ink text-white' : 'text-ink'}`}
                 onMouseEnter={() => setSel(i)}
                 onClick={() => run(i)}
               >
                 <Icon size={15} strokeWidth={1.7} className={i === sel ? '' : 'text-faded'} />
                 <span className={`flex-1 truncate ${r.kind === 'item' ? 'font-serif' : ''}`}>{r.kind === 'item' ? r.item.title : r.action.label}</span>
-                {r.kind === 'item' && <span className={`text-[12px] ${i === sel ? 'text-[#dfe6dc]' : 'text-faded'}`}>{TYPE_LABEL[r.item.type]}</span>}
+                {r.kind === 'item' && <span className={`text-[12px] ${i === sel ? 'text-white' : 'text-faded'}`}>{TYPE_LABEL[r.item.type]}</span>}
               </button>
             </li>
           );

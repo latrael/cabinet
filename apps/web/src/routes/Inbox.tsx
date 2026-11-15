@@ -36,13 +36,13 @@ export function InboxPage() {
           Inbox zero. Anything you paste, send from Telegram, or an agent captures will show up here.
         </div>
       )}
-      <div className="masonry mt-4">
+      <div className="item-grid mt-4">
         {items.map((i) => (
           <ItemCard
             key={i.id}
             item={i}
             footer={
-              <div className="flex gap-1">
+              <div className="-mx-2 flex gap-1">
                 <button className="btn btn-sm btn-quiet" onClick={() => void setStatus(i, 'library')}>
                   <Check size={13} /> File in library
                 </button>

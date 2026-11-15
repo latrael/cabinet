@@ -140,7 +140,7 @@ export function ChatPage() {
         <ul className="flex flex-col">
           {chats.data?.chats.map((c) => (
             <li key={c.id}>
-              <Link to="/chat" search={{ id: c.id } as any} className={`block truncate rounded-[3px] px-2 py-1.5 text-[13.5px] hover:bg-paper-deep/70 ${c.id === chatId ? 'bg-card shadow-[var(--shadow-card)]' : 'text-ink-soft'}`}>
+              <Link to="/chat" search={{ id: c.id } as any} className={`block truncate px-2 py-1.5 text-[13.5px] hover:bg-paper-deep/70 ${c.id === chatId ? 'bg-card shadow-[var(--shadow-card)]' : 'text-ink-soft'}`}>
                 {c.title}
                 <span className="block text-[11.5px] text-faded">{relTime(c.updated)}</span>
               </Link>
@@ -165,7 +165,7 @@ export function ChatPage() {
           )}
           {msgs.map((m, i) =>
             m.role === 'user' ? (
-              <div key={i} className="self-end rounded-[4px] bg-lamp px-4 py-2.5 text-[15px] text-[#f6f1e4] shadow-[var(--shadow-card)]">
+              <div key={i} className="self-end bg-ink px-4 py-2.5 text-[15px] text-white shadow-[var(--shadow-card)]">
                 {m.content}
               </div>
             ) : (

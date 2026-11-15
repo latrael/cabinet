@@ -45,7 +45,7 @@ export function LibraryPage() {
           <option value="updated">Recently changed</option>
           <option value="title">Title</option>
         </select>
-        <div className="flex rounded-[3px] border border-rule-strong bg-card" role="group" aria-label="View">
+        <div className="flex border border-rule-strong bg-card" role="group" aria-label="View">
           <button className={`btn btn-sm !border-0 ${view === 'cards' ? '!bg-paper-deep' : '!bg-transparent'}`} onClick={() => set({ view: 'cards' })} aria-pressed={view === 'cards'} aria-label="Cards">
             <LayoutGrid size={14} />
           </button>
@@ -83,7 +83,7 @@ export function LibraryPage() {
         </select>
       </div>
       {view === 'cards' ? (
-        <div className="masonry">
+        <div className="item-grid">
           {items.map((i) => (
             <ItemCard key={i.id} item={i} />
           ))}
