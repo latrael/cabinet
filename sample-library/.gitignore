@@ -1,0 +1,10 @@
+# Cabinet generated / private files
+.cabinet/index.sqlite*
+.cabinet/state.sqlite*
+.cabinet/cache/
+.cabinet/thumbs/
+.cabinet/secrets.json
+.cabinet/tmp/
+.cabinet/trash/
+.DS_Store
+.obsidian/workspace*.json

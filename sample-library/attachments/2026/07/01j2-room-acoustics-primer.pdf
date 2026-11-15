@@ -1,0 +1,65 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>
+endobj
+5 0 obj
+<< /Length 423 >>
+stream
+BT
+/F2 20 Tf 72 760 Td (A primer on small-room acoustics) Tj ET
+BT
+/F1 12 Tf 72 720 Td 16 TL
+(Small rooms have three problems: early reflections, flutter echo between) '
+(parallel walls, and uneven bass.) '
+() '
+(Early reflections are best handled at the first reflection points with) '
+(soft panels or bookshelves. Flutter echo disappears once one of two) '
+(parallel walls is broken up, by shelves, curtains or art.) '
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 327 >>
+stream
+BT
+/F1 12 Tf 72 760 Td 16 TL
+(Bass is hard. Corner placement of soft furniture helps a little; bass) '
+(traps help more.) '
+() '
+(Rule of thumb: treat 20 to 30 percent of the wall area, and use a thick) '
+(rug on hard floors. A reading corner rarely needs panels. A full) '
+(bookshelf and a heavy curtain usually suffice.) '
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000193 00000 n 
+0000000264 00000 n 
+0000000738 00000 n 
+0000000874 00000 n 
+0000001252 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R /Info << /Title (A primer on small-room acoustics) >> >>
+startxref
+1388
+%%EOF
