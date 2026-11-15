@@ -1,0 +1,15 @@
+{
+  "name": "@cabinet/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/main.ts"
+  },
+  "dependencies": {
+    "@cabinet/core": "workspace:*",
+    "@cabinet/mcp": "workspace:*",
+    "@cabinet/server": "workspace:*"
+  }
+}
