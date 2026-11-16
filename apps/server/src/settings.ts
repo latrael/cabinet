@@ -71,8 +71,8 @@ export function settingsRoutes(ctx: ServerContext) {
   });
 
   r.post('/tokens', async (c) => {
-    const { name } = await c.req.json<{ name: string }>();
-    const t = ctx.auth.createToken(name || 'agent');
+    const { name, scopes } = await c.req.json<{ name: string; scopes?: string[] }>();
+    const t = ctx.auth.createToken(name || 'agent', { scopes });
     return c.json({ ...t, note: 'Copy this token now. It is shown only once.' });
   });
 

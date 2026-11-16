@@ -7,11 +7,13 @@ import { streamSSE } from 'hono/streaming';
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
 import {
+  AlreadyDecidedError,
   ConflictError,
   NotFoundError,
   currentInterests,
   exportLibrary,
   ITEM_TYPES,
+  proposeMemory,
   revisit,
   validateExport,
   type Item,
@@ -20,6 +22,7 @@ import {
 import { SESSION_COOKIE } from './auth.ts';
 import { previewUrl } from './capture/web.ts';
 import type { ServerContext, Vars } from './context.ts';
+import { memoryRoutes } from './memory.ts';
 import { settingsRoutes } from './settings.ts';
 
 const MIME: Record<string, string> = {
@@ -52,6 +55,7 @@ function remoteAddress(c: Context): string | undefined {
 }
 
 function errorResponse(c: Context, e: unknown) {
+  if (e instanceof AlreadyDecidedError) return c.json({ error: 'already_decided', message: e.message, current: e.current }, 409);
   if (e instanceof ConflictError) return c.json({ error: 'conflict', message: e.message, current: e.current }, 409);
   if (e instanceof NotFoundError) return c.json({ error: 'not_found', message: e.message }, 404);
   const msg = e instanceof Error ? e.message : String(e);
@@ -84,6 +88,7 @@ export function createApp(ctx: ServerContext) {
     if (!r.ok) return c.json({ error: 'unauthorized', message: r.reason, passphrase: ctx.auth.hasPassphrase }, (r.status ?? 401) as 401);
     c.set('author', r.author);
     c.set('via', r.via);
+    c.set('scopes', r.scopes);
     await next();
   };
 
@@ -116,7 +121,7 @@ export function createApp(ctx: ServerContext) {
   app.use('/files/*', guard);
   app.use('/thumbs', guard);
 
-  app.get('/api/auth/status', (c) => c.json({ ok: true, via: c.get('via'), author: c.get('author'), passphrase: ctx.auth.hasPassphrase }));
+  app.get('/api/auth/status', (c) => c.json({ ok: true, via: c.get('via'), author: c.get('author'), scopes: c.get('scopes'), passphrase: ctx.auth.hasPassphrase }));
 
   // ------------------------------------------------------------ SSE
   app.get('/api/events', (c) =>
@@ -205,6 +210,25 @@ export function createApp(ctx: ServerContext) {
     try {
       const b = await c.req.json<any>();
       if (!ITEM_TYPES.includes(b.type)) throw new Error('Unknown type');
+      const author = c.get('author');
+      if (b.type === 'memory' && author.startsWith('agent:')) {
+        const agent = author.slice('agent:'.length);
+        const fact = String(b.body ?? '').trim() || String(b.title ?? '').trim();
+        const proposal = proposeMemory(
+          ctx.lib,
+          {
+            fact,
+            title: b.title,
+            tags: b.tags,
+            capturedVia: b.captured_via ?? 'web',
+            agent,
+          },
+          author,
+        );
+        const item = ctx.lib.read(proposal.id);
+        ctx.ai?.onItemChanged(item.id, author);
+        return c.json(itemDetail(ctx, item), 201);
+      }
       const item = ctx.lib.create(
         {
           type: b.type,
@@ -217,9 +241,9 @@ export function createApp(ctx: ServerContext) {
           frontmatter: b.frontmatter,
           captured_via: b.captured_via ?? (b.type === 'note' || b.type === 'project' ? undefined : 'web'),
         },
-        c.get('author'),
+        author,
       );
-      ctx.ai?.onItemChanged(item.id, c.get('author'));
+      ctx.ai?.onItemChanged(item.id, author);
       return c.json(itemDetail(ctx, item), 201);
     } catch (e) {
       return errorResponse(c, e);
@@ -229,12 +253,23 @@ export function createApp(ctx: ServerContext) {
   app.put('/api/items/:id', async (c) => {
     try {
       const b = await c.req.json<any>();
+      const author = c.get('author');
+      const id = c.req.param('id');
+      if (author.startsWith('agent:')) {
+        const existing = ctx.lib.find(id);
+        if (existing && existing.type === 'memory') {
+          const fm = b.frontmatter;
+          if (fm && typeof fm === 'object' && ('memory' in fm || 'status' in fm)) {
+            return c.json({ error: 'forbidden', message: 'Agents cannot modify memory proposal status or metadata' }, 403);
+          }
+        }
+      }
       const item = ctx.lib.update(
-        c.req.param('id'),
+        id,
         { body: b.body, frontmatter: b.frontmatter, baseHash: b.baseHash, renameFile: b.renameFile },
-        c.get('author'),
+        author,
       );
-      ctx.ai?.onItemChanged(item.id, c.get('author'));
+      ctx.ai?.onItemChanged(item.id, author);
       return c.json(itemDetail(ctx, item));
     } catch (e) {
       return errorResponse(c, e);
@@ -582,6 +617,7 @@ export function createApp(ctx: ServerContext) {
     }
   });
 
+  app.route('/api/memory', memoryRoutes(ctx));
   app.route('/api/settings', settingsRoutes(ctx));
 
   // ------------------------------------------------------------ AI routes (filled when AI is enabled)

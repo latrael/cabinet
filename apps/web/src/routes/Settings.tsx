@@ -10,7 +10,7 @@ interface SettingsData {
   libraryPath: string;
   defaultLibraryPath: string;
   secrets: { passphrase: boolean; anthropicKey: boolean; openaiKey: boolean; telegramToken: boolean };
-  tokens: Array<{ id: string; name: string; created: string; lastUsed?: string }>;
+  tokens: Array<{ id: string; name: string; created: string; lastUsed?: string; scopes?: string[] }>;
   telegram: { running: boolean; username?: string; error?: string };
   transcription: { ok: boolean; reason?: string };
   jobs: { pending: number; failures: Array<{ key: string; error: string; at: string }> };
@@ -87,6 +87,7 @@ export function SettingsPage() {
   const [cfg, setCfg] = useState<any>(null);
   const [newToken, setNewToken] = useState<{ name: string; token: string } | null>(null);
   const [tokenName, setTokenName] = useState('');
+  const [tokenCanReview, setTokenCanReview] = useState(false);
   const [pairing, setPairing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [libPath, setLibPath] = useState('');
@@ -281,6 +282,7 @@ export function SettingsPage() {
               <li key={t.id} className="flex items-center gap-3 border-b border-rule py-2 text-[14px]">
                 <KeyRound size={14} className="text-faded" />
                 <span className="font-semibold">agent:{t.name}</span>
+                {t.scopes?.includes('review') && <span className="bg-lamp-wash px-1.5 text-[11.5px] text-lamp">can review</span>}
                 <span className="text-[12.5px] text-faded">created {relTime(t.created)}{t.lastUsed ? `, last used ${relTime(t.lastUsed)}` : ', never used'}</span>
                 <button
                   className="btn btn-sm btn-quiet btn-danger ml-auto"
@@ -295,16 +297,24 @@ export function SettingsPage() {
             ))}
           </ul>
           <form
-            className="mt-3 flex gap-2"
+            className="mt-3 flex flex-wrap items-center gap-3"
             onSubmit={async (e) => {
               e.preventDefault();
-              const t = await api<{ name: string; token: string }>('/api/settings/tokens', { method: 'POST', json: { name: tokenName || 'agent' } });
+              const t = await api<{ name: string; token: string }>('/api/settings/tokens', {
+                method: 'POST',
+                json: { name: tokenName || 'agent', scopes: tokenCanReview ? ['review'] : undefined },
+              });
               setNewToken(t);
               setTokenName('');
+              setTokenCanReview(false);
               qc.invalidateQueries({ queryKey: ['settings'] });
             }}
           >
             <input className="field !w-60" placeholder="Agent name, e.g. claude-desktop" value={tokenName} onChange={(e) => setTokenName(e.target.value)} />
+            <label className="flex cursor-pointer items-center gap-2 text-[13.5px]">
+              <input type="checkbox" className="h-4 w-4 accent-lamp" checked={tokenCanReview} onChange={(e) => setTokenCanReview(e.target.checked)} />
+              Can review memory proposals
+            </label>
             <button className="btn">Create token</button>
           </form>
           {newToken && (

@@ -24,7 +24,7 @@ Commands:
   rebuild               Rebuild the search index from the files
   export [file.zip]     Export the library as a zip (--git to include history)
   restore <file.zip>    Restore a library from an export (current one is moved aside)
-  token <name>          Create an access token for an agent (MCP over HTTP / API)
+  token <name>          Create an access token for an agent (--review to allow reviewing memory proposals)
   tokens                List tokens
   passphrase            Set the library passphrase (hidden prompt, or --stdin)
   path [newPath]        Show or set the default library path
@@ -36,6 +36,9 @@ Options:
   --no-ai               Start without the AI layer
   --no-telegram         Start without the Telegram bot
   --agent <name>        Agent name for MCP stdio (default: claude)
+  --thread <id>         Default thread_id for MCP stdio memory proposals
+  --project <slug|id>   Default project for MCP stdio memory proposals
+  --review              Grant memory proposal review scope to a created token
 `;
 
 async function main() {
@@ -51,6 +54,9 @@ async function main() {
       'no-telegram': { type: 'boolean' },
       'no-watch': { type: 'boolean' },
       agent: { type: 'string' },
+      thread: { type: 'string' },
+      project: { type: 'string' },
+      review: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       quiet: { type: 'boolean', short: 'q' },
       stdin: { type: 'boolean' },
@@ -103,7 +109,10 @@ async function main() {
 
     case 'mcp': {
       const { runStdio } = await import('./mcp-stdio.ts');
-      await runStdio({ library, agent: values.agent ?? process.env.CABINET_AGENT ?? 'claude', ai: !values['no-ai'] });
+      const threadId = (values.thread ?? process.env.CABINET_THREAD_ID)?.trim() || undefined;
+      const project = (values.project ?? process.env.CABINET_PROJECT)?.trim() || undefined;
+      const defaults = threadId || project ? { threadId, project } : undefined;
+      await runStdio({ library, agent: values.agent ?? process.env.CABINET_AGENT ?? 'claude', ai: !values['no-ai'], defaults });
       return;
     }
 
@@ -140,9 +149,9 @@ async function main() {
     case 'token': {
       const { Auth } = await import('@cabinet/server');
       const lib = await Library.open(library, { git: false });
-      const t = new Auth(lib).createToken(rest[0] ?? 'agent');
+      const t = new Auth(lib).createToken(rest[0] ?? 'agent', values.review ? { scopes: ['review'] } : undefined);
       await lib.close();
-      console.log(`Token for agent "${t.name}" (shown once):\n\n  ${t.token}\n`);
+      console.log(`Token for agent "${t.name}"${t.scopes.length ? ` [${t.scopes.join(',')}]` : ''} (shown once):\n\n  ${t.token}\n`);
       return;
     }
 
@@ -164,7 +173,10 @@ async function main() {
     case 'tokens': {
       const { Auth } = await import('@cabinet/server');
       const lib = await Library.open(library, { git: false });
-      for (const t of new Auth(lib).listTokens()) console.log(`${t.id}  ${t.name}  created ${t.created}${t.lastUsed ? '  last used ' + t.lastUsed : ''}`);
+      for (const t of new Auth(lib).listTokens()) {
+        const scopes = t.scopes?.length ? `  [${t.scopes.join(',')}]` : '';
+        console.log(`${t.id}  ${t.name}${scopes}  created ${t.created}${t.lastUsed ? '  last used ' + t.lastUsed : ''}`);
+      }
       await lib.close();
       return;
     }

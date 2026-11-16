@@ -10,6 +10,7 @@ export * from './state.ts';
 export * from './git.ts';
 export * from './watcher.ts';
 export * from './library.ts';
+export * from './memory.ts';
 export * from './archive.ts';
 export * from './agents-md.ts';
 export * from './revisit.ts';

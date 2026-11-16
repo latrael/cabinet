@@ -1,13 +1,13 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Library, loadSecrets } from '@cabinet/core';
-import { createCabinetMcpServer } from '@cabinet/mcp';
+import { createCabinetMcpServer, type McpDeps } from '@cabinet/mcp';
 import { CapturePipeline, JobRunner, Thumbs } from '@cabinet/server';
 
 /**
  * MCP over stdio for local agents (Claude Code, Claude Desktop). Opens the library directly;
  * stdout carries only JSON-RPC, so all logging goes to stderr.
  */
-export async function runStdio(opts: { library: string; agent: string; ai?: boolean }) {
+export async function runStdio(opts: { library: string; agent: string; ai?: boolean; defaults?: McpDeps['defaults'] }) {
   const lib = await Library.open(opts.library, { watch: true });
   lib.on('error-log', (e) => process.stderr.write(`[cabinet] ${e instanceof Error ? e.message : String(e)}\n`));
   const jobs = new JobRunner(lib, 1);
@@ -28,6 +28,7 @@ export async function runStdio(opts: { library: string; agent: string; ai?: bool
   const server = createCabinetMcpServer({
     lib: () => lib,
     agent: opts.agent,
+    defaults: opts.defaults,
     search: ai ? (q, o) => ai.search(q, o) : undefined,
     related: ai ? (t, o) => ai.related(t, o) : undefined,
     onChanged: (id) => ai?.queueEmbed(id),

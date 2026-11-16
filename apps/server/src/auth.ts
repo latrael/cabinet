@@ -10,6 +10,7 @@ export interface AuthResult {
   ok: boolean;
   author: string;
   via: 'local' | 'session' | 'token' | 'none';
+  scopes: string[];
   status?: number;
   reason?: string;
 }
@@ -92,13 +93,17 @@ export class Auth {
     return Number(parts[1]) > Date.now();
   }
 
-  createToken(name: string): { id: string; token: string; name: string } {
+  createToken(name: string, opts?: { scopes?: string[] }): { id: string; token: string; name: string; scopes: string[] } {
     const clean = name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(0, 40) || 'agent';
     const token = 'cab_' + randomBytes(24).toString('base64url');
     const id = randomBytes(6).toString('hex');
-    this.secrets.tokens = [...(this.secrets.tokens ?? []), { id, name: clean, hash: sha256(token), created: nowIso() }];
+    const scopes = [...new Set((opts?.scopes ?? []).filter((s) => s === 'review'))];
+    this.secrets.tokens = [
+      ...(this.secrets.tokens ?? []),
+      { id, name: clean, hash: sha256(token), created: nowIso(), ...(scopes.length ? { scopes } : {}) },
+    ];
     this.save();
-    return { id, token, name: clean };
+    return { id, token, name: clean, scopes };
   }
 
   revokeToken(id: string) {
@@ -107,10 +112,16 @@ export class Auth {
   }
 
   listTokens() {
-    return (this.secrets.tokens ?? []).map(({ id, name, created, lastUsed }) => ({ id, name, created, lastUsed }));
+    return (this.secrets.tokens ?? []).map(({ id, name, created, lastUsed, scopes }) => ({
+      id,
+      name,
+      created,
+      lastUsed,
+      scopes: scopes ?? [],
+    }));
   }
 
-  verifyToken(token: string): { id: string; name: string } | null {
+  verifyToken(token: string): { id: string; name: string; scopes: string[] } | null {
     const h = sha256(token);
     const t = (this.secrets.tokens ?? []).find((x) => {
       const a = Buffer.from(x.hash);
@@ -123,7 +134,7 @@ export class Auth {
       t.lastUsed = now;
       this.save();
     }
-    return { id: t.id, name: t.name };
+    return { id: t.id, name: t.name, scopes: t.scopes ?? [] };
   }
 
   isLocalHost(host: string | undefined): boolean {
@@ -142,8 +153,8 @@ export class Auth {
     const authz = req.headers['authorization'];
     if (authz?.startsWith('Bearer ')) {
       const t = this.verifyToken(authz.slice(7).trim());
-      if (t) return { ok: true, author: `agent:${t.name}`, via: 'token' };
-      return { ok: false, author: '', via: 'none', status: 401, reason: 'Invalid token' };
+      if (t) return { ok: true, author: `agent:${t.name}`, via: 'token', scopes: t.scopes };
+      return { ok: false, author: '', via: 'none', scopes: [], status: 401, reason: 'Invalid token' };
     }
     const host = req.headers['host'];
     const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
@@ -162,17 +173,18 @@ export class Auth {
     };
     const local = !!req.remote && LOOPBACK.has(req.remote) && this.isLocalHost(host);
     if (local) {
-      if (mutating && !sameOrigin()) return { ok: false, author: '', via: 'none', status: 403, reason: 'Cross-origin request blocked' };
-      return { ok: true, author: 'you', via: 'local' };
+      if (mutating && !sameOrigin()) return { ok: false, author: '', via: 'none', scopes: [], status: 403, reason: 'Cross-origin request blocked' };
+      return { ok: true, author: 'you', via: 'local', scopes: [] };
     }
     if (this.verifySession(req.cookie)) {
-      if (mutating && !sameOrigin()) return { ok: false, author: '', via: 'none', status: 403, reason: 'Cross-origin request blocked' };
-      return { ok: true, author: 'you', via: 'session' };
+      if (mutating && !sameOrigin()) return { ok: false, author: '', via: 'none', scopes: [], status: 403, reason: 'Cross-origin request blocked' };
+      return { ok: true, author: 'you', via: 'session', scopes: [] };
     }
     return {
       ok: false,
       author: '',
       via: 'none',
+      scopes: [],
       status: 401,
       reason: this.hasPassphrase ? 'Sign in required' : 'Remote access needs a passphrase. Set one from Settings on this computer.',
     };

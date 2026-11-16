@@ -45,4 +45,4 @@ export interface ServerContext {
   extras: Record<string, any>;
 }
 
-export type Vars = { Variables: { author: Author; via: string } };
+export type Vars = { Variables: { author: Author; via: string; scopes: string[] } };
