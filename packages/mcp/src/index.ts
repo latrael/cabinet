@@ -16,11 +16,12 @@ interface HttpCtx {
   extras: Record<string, any>;
 }
 
-export function depsFromContext(ctx: HttpCtx, agent: string): McpDeps {
+export function depsFromContext(ctx: HttpCtx, agent: string, defaults?: McpDeps['defaults']): McpDeps {
   const author = `agent:${agent}`;
   return {
     lib: () => ctx.lib,
     agent,
+    defaults,
     search: ctx.ai ? (q, o) => ctx.ai!.search!(q, o) : undefined,
     related: ctx.ai ? (t, o) => ctx.ai!.related!(t, o) : undefined,
     onChanged: (id) => ctx.ai?.onItemChanged(id, author),
@@ -44,8 +45,15 @@ export function mountHttp(ctx: HttpCtx) {
       if (c.get('via') !== 'token') {
         return c.json({ jsonrpc: '2.0', error: { code: -32001, message: 'MCP over HTTP needs an agent token. Create one in Settings → Agents.' }, id: null }, 401);
       }
+      const scopes: string[] = c.get('scopes') ?? [];
+      if (scopes.includes('review')) {
+        return c.json({ jsonrpc: '2.0', error: { code: -32001, message: 'Review tokens cannot be used for MCP; create a separate agent token.' }, id: null }, 401);
+      }
       const agent = String(c.get('author')).replace(/^agent:/, '');
-      const server = createCabinetMcpServer(depsFromContext(ctx, agent));
+      const threadId = c.req.header('x-cabinet-thread')?.trim() || undefined;
+      const project = c.req.header('x-cabinet-project')?.trim() || undefined;
+      const defaults = threadId || project ? { threadId, project } : undefined;
+      const server = createCabinetMcpServer(depsFromContext(ctx, agent, defaults));
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       await server.connect(transport);
       try {

@@ -28,7 +28,7 @@ Add `--library ~/Cabinet` if your library isn't the default. Or put this in `.mc
 }
 ```
 
-Tested with Claude Code 2.1: `claude -p "call get_context for 'reading corner lighting', then remember …" --mcp-config cabinet.json` returned the project intent from the library and wrote `memories/reading-corner-lamp-height.md`, committed as `agent:claude-code`.
+Tested with Claude Code 2.1: `claude -p "call get_context for 'reading corner lighting', then remember …" --mcp-config cabinet.json` returned the project intent from the library and proposed `memories/reading-corner-lamp-height.md`, committed as `agent:claude-code`.
 
 ## Claude Desktop
 
@@ -61,7 +61,7 @@ Use the absolute path to Node 24.12 or newer; Node 26 is recommended. Desktop do
 }
 ```
 
-The HTTP endpoint is stateless (a fresh MCP session per request) and always requires a token, even from localhost, so every write is attributable.
+The HTTP endpoint is stateless (a fresh MCP session per request) and always requires an agent token, even from localhost, so every write is attributable. Tokens with the `review` scope (`cabinet token <name> --review` or the "Can review memory proposals" checkbox) are for harnesses reviewing proposals over `/api/memory/*` and are refused on `/mcp`.
 
 ## Tools
 
@@ -69,7 +69,7 @@ The HTTP endpoint is stateless (a fresh MCP session per request) and always requ
 | --- | --- |
 | `search` | Keyword + meaning search. Each hit says where it matched (title, note, content, tag, PDF text, similar meaning). |
 | `get_item` | Full Markdown, frontmatter, `hash`, backlinks, projects and outgoing links for one item (by id, slug, title or `[[link]]`). |
-| `get_context(topic)` | A compact briefing for agents: relevant memories, projects (intent, material, open questions, to-dos), and notes/sources with why they were saved and short excerpts. |
+| `get_context(topic)` | A compact briefing for agents: relevant approved memories, projects (intent, material, open questions, to-dos), and notes/sources with why they were saved and short excerpts. |
 | `list_recent` | Newest items, optionally by type or status. |
 | `list_projects` | Projects with status, kind, intent and section names. |
 | `get_backlinks` | What links to an item, including projects and their per-project context. |
@@ -79,8 +79,15 @@ The HTTP endpoint is stateless (a fresh MCP session per request) and always requ
 | `update_note` | Replace the body (needs `base_hash` from `get_item`; refused if the file changed since) or `append` text. |
 | `link_items` | Add `[[target]]` to an item's `## Related` list with an optional note. |
 | `add_to_project` | Reference an item in a project's `## Material`, in a section, with context. |
-| `remember` | Store a short durable fact in `memories/` (`type: memory`, `agent: <name>`). |
-| `recall` | Search memories. |
+| `remember` | Propose a short durable fact in `memories/` (`status: inbox`, `memory.lifecycle: proposed`) with optional `thread_id`, `project`, and `sources` (`{ item?, url?, quote? }`). Returns `{ outcome: "proposed", remembered: false, id, slug, path, status: "proposed" }`. Not returned by `recall` or `get_context` until approved by the owner. |
+| `recall` | Search approved memories. |
+
+### Memory proposal flow
+
+Calling `remember` always creates a memory **proposal** rather than a live memory:
+- The file is written to `memories/<slug>.md` with `status: inbox`, `agent: <name>`, `captured_via: mcp:<name>`, and a `memory` frontmatter block (`lifecycle: proposed`, `proposed_by`, `proposed_at`, and optional `thread_id`, `project_ids`, `sources`).
+- Proposals are excluded from `recall` and `get_context` until the owner approves them (via `POST /api/memory/proposals/:id/approve` or the HTTP review API). Approving moves `status` to `library` and `memory.lifecycle` to `active`; rejecting moves `status` to `archived` and `memory.lifecycle` to `rejected`.
+- Harnesses can supply attribution defaults automatically: over HTTP `/mcp` via `X-Cabinet-Thread` and `X-Cabinet-Project` headers, or over stdio via `--thread`/`--project` flags (or `CABINET_THREAD_ID` / `CABINET_PROJECT` env vars). Explicit `thread_id` / `project` arguments to `remember` override those defaults.
 
 Every item is also an MCP resource at `cabinet://item/{id}` (Markdown).
 

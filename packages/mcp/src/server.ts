@@ -4,7 +4,9 @@ import {
   ConflictError,
   ITEM_TYPES,
   getSection,
+  isActiveMemory,
   parseProject,
+  proposeMemory,
   splitNotesAndContent,
   type Item,
   type ItemSummary,
@@ -17,6 +19,11 @@ export interface McpDeps {
   lib: () => Library;
   /** Agent name; writes are committed as `agent:<name>` and captured_via `mcp:<name>`. */
   agent: string;
+  /** Optional session defaults injected by the harness/transport for attribution. */
+  defaults?: {
+    threadId?: string;
+    project?: string;
+  };
   search?: (q: string, opts: { type?: string | string[]; limit?: number }) => Promise<{ hits: SearchHit[]; mode: string }>;
   related?: (text: string, opts: { excludeIds?: string[]; limit?: number }) => Promise<Array<{ item: ItemSummary; score: number; reason: string }>>;
   capture?: (input: {
@@ -46,7 +53,7 @@ function brief(i: ItemSummary) {
 export const INSTRUCTIONS = `Cabinet is the owner's personal library: notes, saved sources (articles, links, quotes, videos, images, PDFs), hobby projects and agent memories, stored as Markdown files.
 Use it as long-term memory and context:
 - Before answering questions about the owner's interests, projects or past saves, call get_context (or search + get_item).
-- When you learn a durable fact about the owner or their work, call remember. Use recall to look facts up.
+- When you learn a durable fact about the owner or their work, call remember to propose a durable fact; the owner approves it before it becomes memory. Use recall to look facts up.
 - Save useful links or text with capture; write longer thinking with create_note.
 - Reference items as [[slug]] inside note bodies to link them.
 - update_note needs the base_hash from get_item so you never overwrite edits made elsewhere.
@@ -133,7 +140,9 @@ export function createCabinetMcpServer(deps: McpDeps): McpServer {
       const lib = L();
       const max = max_items ?? 10;
       const { hits } = await doSearch(topic, undefined, max * 2);
-      const memories = (await doSearch(topic, 'memory', 6)).hits.filter((h) => h.item.type === 'memory');
+      const memories = (await doSearch(topic, 'memory', 12)).hits
+        .filter((h) => h.item.type === 'memory' && isActiveMemory(lib.read(h.item.id)))
+        .slice(0, 6);
       const seen = new Set<string>();
       const projects: ItemSummary[] = [];
       const others: SearchHit[] = [];
@@ -269,13 +278,16 @@ export function createCabinetMcpServer(deps: McpDeps): McpServer {
     },
     guard(async ({ query, limit }: { query: string; limit?: number }) => {
       const lib = L();
-      const { hits } = await doSearch(query, 'memory', limit ?? 10);
-      const out = hits
-        .filter((h) => h.item.type === 'memory')
-        .map((h) => {
-          const it = lib.read(h.item.id);
-          return { slug: it.slug, title: it.title, fact: it.body.trim(), agent: it.frontmatter.agent, created: it.created, tags: it.tags };
-        });
+      const lim = limit ?? 10;
+      const { hits } = await doSearch(query, 'memory', lim * 2);
+      const out: Array<{ slug: string; title: string; fact: string; agent: unknown; created: string; tags: string[] }> = [];
+      for (const h of hits) {
+        if (h.item.type !== 'memory') continue;
+        const it = lib.read(h.item.id);
+        if (!isActiveMemory(it)) continue;
+        out.push({ slug: it.slug, title: it.title, fact: it.body.trim(), agent: it.frontmatter.agent, created: it.created, tags: it.tags });
+        if (out.length >= lim) break;
+      }
       return json(out.length ? out : { memories: [], note: 'No matching memories.' });
     }),
   );
@@ -286,14 +298,50 @@ export function createCabinetMcpServer(deps: McpDeps): McpServer {
     'remember',
     {
       title: 'Remember a fact',
-      description: 'Store a short, durable fact (one or two sentences) as a memory. Link related items with [[slug]]. Avoid duplicates: recall first.',
-      inputSchema: { fact: z.string().min(3), title: z.string().optional(), tags: z.array(z.string()).optional() },
+      description: 'Propose a short, durable fact (one or two sentences) for the owner to approve. It is not recallable until approved. Include thread_id and project when you know them. Recall first to avoid duplicates.',
+      inputSchema: {
+        fact: z.string().min(3),
+        title: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        thread_id: z.string().optional(),
+        project: z.string().optional(),
+        sources: z
+          .array(
+            z.object({
+              item: z.string().optional(),
+              url: z.string().optional(),
+              quote: z.string().optional(),
+            }),
+          )
+          .optional(),
+      },
     },
-    guard(async ({ fact, title, tags }: { fact: string; title?: string; tags?: string[] }) => {
-      const t = title?.trim() || fact.replace(/\s+/g, ' ').slice(0, 72).replace(/[.,;:]?\s+\S*$/, '');
-      const item = L().create({ type: 'memory', title: t, body: fact.trim() + '\n', tags, captured_via: via, frontmatter: { agent: deps.agent } }, author);
-      deps.onChanged?.(item.id);
-      return json({ remembered: true, slug: item.slug, id: item.id, path: item.path });
+    guard(async (input: { fact: string; title?: string; tags?: string[]; thread_id?: string; project?: string; sources?: Array<{ item?: string; url?: string; quote?: string }> }) => {
+      const lib = L();
+      const threadId = (input.thread_id?.trim() || deps.defaults?.threadId?.trim() || undefined)?.slice(0, 200);
+      let project: string | undefined;
+      if (input.project !== undefined && input.project.trim() !== '') {
+        project = input.project.trim();
+      } else if (deps.defaults?.project?.trim()) {
+        const resolvedDefault = lib.find(deps.defaults.project.trim());
+        if (resolvedDefault?.type === 'project') project = resolvedDefault.id;
+      }
+      const proposal = proposeMemory(
+        lib,
+        {
+          fact: input.fact,
+          title: input.title,
+          tags: input.tags,
+          threadId,
+          project,
+          sources: input.sources,
+          agent: deps.agent,
+          capturedVia: via,
+        },
+        author,
+      );
+      deps.onChanged?.(proposal.id);
+      return json({ outcome: 'proposed', remembered: false, id: proposal.id, slug: proposal.slug, path: proposal.path, status: proposal.status });
     }),
   );
 

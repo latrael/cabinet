@@ -24,6 +24,28 @@ export interface SourceInfo {
   published?: string;
 }
 
+export type MemoryLifecycle = 'proposed' | 'active' | 'rejected';
+
+export interface MemorySource {
+  item_id?: string;
+  url?: string;
+  quote?: string;
+}
+
+export interface MemoryFrontmatter {
+  schema_version: number;
+  lifecycle: MemoryLifecycle;
+  proposed_by: string;
+  proposed_at: string;
+  thread_id?: string;
+  project_ids?: string[];
+  sources?: MemorySource[];
+  decided_by?: string;
+  decided_at?: string;
+  reject_reason?: string;
+  original_text?: string;
+}
+
 /** Frontmatter as stored on disk. Unknown keys are preserved untouched. */
 export interface Frontmatter {
   id: string;
@@ -48,6 +70,7 @@ export interface Frontmatter {
   view?: 'cards' | 'list';
   // memories
   agent?: string;
+  memory?: MemoryFrontmatter;
   [key: string]: unknown;
 }
 
@@ -143,7 +166,7 @@ export interface SearchHit {
 export type Author = string; // 'you' | `agent:${string}` | 'telegram' | 'inbox-agent' | 'cli'
 
 export interface LibraryEvent {
-  kind: 'created' | 'updated' | 'deleted' | 'renamed' | 'rebuilt' | 'suggestions' | 'digest' | 'job';
+  kind: 'created' | 'updated' | 'deleted' | 'renamed' | 'rebuilt' | 'suggestions' | 'digest' | 'job' | 'memory';
   id?: string;
   path?: string;
   oldPath?: string;

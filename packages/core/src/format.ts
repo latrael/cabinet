@@ -23,6 +23,7 @@ export const KEY_ORDER = [
   'intent',
   'view',
   'agent',
+  'memory',
 ] as const;
 
 const FLOW_KEYS = new Set(['tags', 'collections', 'aliases']);
@@ -200,7 +201,7 @@ export function toPlainText(md: string): string {
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/!\[\[([^\]]+)\]\]/g, ' ')
     .replace(/\[\[([^\]|#]+)(?:#[^\]|]*)?\|([^\]]+)\]\]/g, '$2')
-    .replace(/\[\[([^\]|#]+)(?:#[^\]]*)?\]\]/g, '$1')
+    .replace(/\[\[([^\]|#]+)(?:#[^\]|]*)?\]\]/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/^\s*\|?[\s:|-]+\|[\s:|-]*$/gm, ' ')

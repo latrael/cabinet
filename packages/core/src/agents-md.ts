@@ -14,7 +14,7 @@ If you can, prefer the Cabinet MCP server (\`cabinet mcp\`), which keeps the ind
 | \`sources/\` | Saved things: \`article\`, \`link\`, \`quote\`, \`text\`, \`video\`, \`image\`, \`pdf\`, \`audio\`. |
 | \`projects/\` | Hobby projects (\`type: project\`). |
 | \`collections/\` | Optional description/cover for a collection (\`type: collection\`). |
-| \`memories/\` | Short atomic facts written by agents (\`type: memory\`). |
+| \`memories/\` | Short atomic facts and memory proposals written by agents (\`type: memory\`). |
 | \`attachments/YYYY/MM/\` | Binary files (images, PDFs, audio). |
 | \`.cabinet/\` | App config. \`index.sqlite\`, \`cache/\`, \`thumbs/\`, \`secrets.json\` are generated/private — never edit them. |
 
@@ -38,7 +38,7 @@ extraction: ok        # ok | failed | manual
 \`\`\`
 
 Projects add \`kind\` (hobby | learning | writing | build), \`intent\`, \`project_status\` (active | paused | done) and \`view\` (cards | list).
-Memories add \`agent\` (who remembered it).
+Memories add \`agent\` (who remembered it) and a \`memory\` proposal block (\`lifecycle: proposed | active | rejected\`, \`proposed_by\`, \`proposed_at\`, optional \`thread_id\`, \`project_ids\`, \`sources\`, and \`decided_by\`/\`decided_at\` once reviewed).
 
 ## Body
 
@@ -54,7 +54,7 @@ Memories add \`agent\` (who remembered it).
 
 1. Never change \`id\` or \`created\`. Update \`updated\` when you edit.
 2. Don't overwrite the owner's notes. Append, or propose changes.
-3. Put new atomic facts in \`memories/<slug>.md\` with \`type: memory\` and \`agent: <your name>\`.
+3. Prefer the MCP \`remember\` tool to propose new atomic facts; it writes \`memories/<slug>.md\` with \`status: inbox\` and \`memory.lifecycle: proposed\` so the owner can approve it before \`recall\` or \`get_context\` surfaces it.
 4. Every change is auto-committed to git with its author, so the owner can review and revert.
 `;
 }

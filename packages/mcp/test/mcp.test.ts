@@ -1,18 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { simpleGit } from 'simple-git';
-import { Library } from '@cabinet/core';
-import { createCabinetMcpServer } from '../src/server.ts';
+import { Library, approveProposal } from '@cabinet/core';
+import { createCabinetMcpServer, type McpDeps } from '../src/server.ts';
 import { tempSample } from '../../core/test/helpers.ts';
 
 const ROOT = new URL('../../../', import.meta.url).pathname;
 let cleanups: Array<() => unknown> = [];
-afterEach(async () => {
+afterAll(async () => {
   for (const c of cleanups.reverse()) await c();
   cleanups = [];
 });
@@ -26,10 +26,10 @@ const parse = (r: any) => {
   }
 };
 
-async function memoryClient() {
+async function memoryClient(defaults?: McpDeps['defaults']) {
   const t = tempSample();
   const lib = await Library.open(t.dir, { git: false });
-  const server = createCabinetMcpServer({ lib: () => lib, agent: 'tester' });
+  const server = createCabinetMcpServer({ lib: () => lib, agent: 'tester', defaults });
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
   const client = new Client({ name: 'test', version: '1' });
@@ -73,15 +73,49 @@ describe('MCP tools (in-memory client)', () => {
     expect(recent).toHaveLength(3);
   });
 
-  test('write tools: remember/recall, create_note, update_note with base hash, link, add_to_project, capture', async () => {
+  test('write tools: remember proposes, recall/get_context exclude until approved, create_note, update_note, link, add_to_project, capture', async () => {
     const { client, lib } = await memoryClient();
-    const mem = parse(await client.callTool({ name: 'remember', arguments: { fact: 'The owner is building a horn speaker for the [[reading-corner]].', tags: ['audio'] } }));
+    const corner = lib.find('reading-corner')!;
+    const mem = parse(
+      await client.callTool({
+        name: 'remember',
+        arguments: {
+          fact: 'The owner is building a horn speaker for the [[reading-corner]].',
+          tags: ['audio'],
+          thread_id: 'thread-42',
+          project: 'reading-corner',
+          sources: [{ item: 'japanese-listening-rooms', quote: 'Horn speakers fill the room' }],
+        },
+      }),
+    );
+    expect(mem).toMatchObject({ outcome: 'proposed', remembered: false, status: 'proposed' });
     expect(mem.path).toMatch(/^memories\//);
+
     const memItem = lib.read(mem.id);
+    expect(memItem.status).toBe('inbox');
     expect(memItem.frontmatter.agent).toBe('tester');
     expect(memItem.frontmatter.captured_via).toBe('mcp:tester');
-    const recall = parse(await client.callTool({ name: 'recall', arguments: { query: 'horn speaker' } }));
-    expect(recall[0].fact).toMatch(/horn speaker/);
+    expect(memItem.frontmatter.memory).toMatchObject({
+      schema_version: 1,
+      lifecycle: 'proposed',
+      proposed_by: 'agent:tester',
+      thread_id: 'thread-42',
+      project_ids: [corner.id],
+    });
+    expect(memItem.frontmatter.memory?.sources?.[0]?.item_id).toBe(lib.find('japanese-listening-rooms')!.id);
+
+    // Proposed memory is excluded from recall and get_context
+    const recallBefore = parse(await client.callTool({ name: 'recall', arguments: { query: 'horn speaker' } }));
+    expect(recallBefore).toMatchObject({ memories: [] });
+    const ctxBefore = parse(await client.callTool({ name: 'get_context', arguments: { topic: 'horn speaker' } }));
+    expect(ctxBefore).not.toContain('The owner is building a horn speaker');
+
+    // Once approved, recall and get_context include it
+    approveProposal(lib, mem.id, {}, 'you');
+    const recallAfter = parse(await client.callTool({ name: 'recall', arguments: { query: 'horn speaker' } }));
+    expect(recallAfter[0].fact).toMatch(/horn speaker/);
+    const ctxAfter = parse(await client.callTool({ name: 'get_context', arguments: { topic: 'horn speaker' } }));
+    expect(ctxAfter).toContain('The owner is building a horn speaker');
 
     const note = parse(await client.callTool({ name: 'create_note', arguments: { title: 'Horn plan', body: 'See [[room-acoustics-primer]] and [[nothing-yet]].' } }));
     expect(note.unresolved_links).toEqual(['nothing-yet']);
@@ -107,6 +141,26 @@ describe('MCP tools (in-memory client)', () => {
     const missing = await client.callTool({ name: 'get_item', arguments: { ref: 'does-not-exist' } });
     expect(missing.isError).toBe(true);
   });
+
+  test('remember uses session defaults when omitted, explicit wins, bad explicit project errors, bad default project ignored', async () => {
+    const { client, lib } = await memoryClient({ threadId: 'default-thread', project: 'reading-corner' });
+    const corner = lib.find('reading-corner')!;
+    const sourdough = lib.find('sourdough')!;
+
+    const m1 = parse(await client.callTool({ name: 'remember', arguments: { fact: 'Uses default thread and project.' } }));
+    expect(lib.read(m1.id).frontmatter.memory).toMatchObject({ thread_id: 'default-thread', project_ids: [corner.id] });
+
+    const m2 = parse(await client.callTool({ name: 'remember', arguments: { fact: 'Explicit overrides defaults.', thread_id: 'explicit-thread', project: 'sourdough' } }));
+    expect(lib.read(m2.id).frontmatter.memory).toMatchObject({ thread_id: 'explicit-thread', project_ids: [sourdough.id] });
+
+    const badExplicit = await client.callTool({ name: 'remember', arguments: { fact: 'Bad explicit project.', project: 'nonexistent-project' } });
+    expect(badExplicit.isError).toBe(true);
+
+    const { client: clientBadDefault, lib: lib2 } = await memoryClient({ threadId: 't-bad', project: 'nonexistent-project' });
+    const m3 = parse(await clientBadDefault.callTool({ name: 'remember', arguments: { fact: 'Ignores unresolvable default project.' } }));
+    expect(m3.outcome).toBe('proposed');
+    expect(lib2.read(m3.id).frontmatter.memory?.project_ids).toBeUndefined();
+  });
 });
 
 describe('real MCP clients', () => {
@@ -115,7 +169,7 @@ describe('real MCP clients', () => {
     cleanups.push(t.cleanup);
     const transport = new StdioClientTransport({
       command: process.execPath,
-      args: [join(ROOT, 'apps/cli/src/main.ts'), 'mcp', '--library', t.dir, '--agent', 'claude-code', '--no-ai'],
+      args: [join(ROOT, 'apps/cli/src/main.ts'), 'mcp', '--library', t.dir, '--agent', 'claude-code', '--thread', 'stdio-t1', '--project', 'sourdough', '--no-ai'],
       stderr: 'pipe',
     });
     const client = new Client({ name: 'stdio-test', version: '1' });
@@ -125,11 +179,15 @@ describe('real MCP clients', () => {
     const ctx = parse(await client.callTool({ name: 'get_context', arguments: { topic: 'sourdough' } }));
     expect(ctx).toMatch(/Sourdough/);
     const mem = parse(await client.callTool({ name: 'remember', arguments: { fact: 'Bakes on Sundays.' } }));
+    expect(mem).toMatchObject({ outcome: 'proposed', remembered: false, status: 'proposed' });
     await client.close();
     // the process flushed its git commit on exit
     await new Promise((r) => setTimeout(r, 800));
     expect(existsSync(join(t.dir, mem.path))).toBe(true);
-    expect(readFileSync(join(t.dir, mem.path), 'utf8')).toContain('agent: claude-code');
+    const raw = readFileSync(join(t.dir, mem.path), 'utf8');
+    expect(raw).toContain('agent: claude-code');
+    expect(raw).toContain('lifecycle: proposed');
+    expect(raw).toContain('thread_id: stdio-t1');
     const log = await simpleGit(t.dir).log();
     expect(log.all.some((c) => c.author_name === 'agent:claude-code')).toBe(true);
   }, 30_000);
@@ -147,7 +205,9 @@ describe('real MCP clients', () => {
     const s = parse(await client.callTool({ name: 'search', arguments: { query: 'listening rooms' } }));
     expect(s.hits.length).toBeGreaterThan(0);
     const mem = parse(await client.callTool({ name: 'remember', arguments: { fact: 'Remote agent was here.' } }));
+    expect(mem).toMatchObject({ outcome: 'proposed', remembered: false, status: 'proposed' });
     expect(srv.ctx.lib.read(mem.id).frontmatter.agent).toBe('remote-bot');
+    expect(srv.ctx.lib.read(mem.id).frontmatter.memory?.proposed_by).toBe('agent:remote-bot');
     await client.close();
   }, 30_000);
 });

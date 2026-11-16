@@ -40,7 +40,7 @@ export interface LibrarySecrets {
   openaiKey?: string;
   telegramToken?: string;
   telegramPairing?: { code: string; expires: number };
-  tokens?: Array<{ id: string; name: string; hash: string; created: string; lastUsed?: string }>;
+  tokens?: Array<{ id: string; name: string; hash: string; created: string; lastUsed?: string; scopes?: string[] }>;
 }
 
 export function defaultConfig(name = 'Cabinet'): LibraryConfig {

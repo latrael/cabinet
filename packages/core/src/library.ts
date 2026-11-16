@@ -19,6 +19,7 @@ import { newId, nowIso, safeFileName, sha1, slugify } from './ids.ts';
 import { LibraryIndex } from './index-db.ts';
 import { buildRecord, itemFromText } from './item.ts';
 import { linkKey, rewriteLinks } from './links.ts';
+import { memoryEventData } from './memory.ts';
 import { addEntry, parseMaterial, writeMaterial } from './project.ts';
 import { StateStore } from './state.ts';
 import { folderForType, type Author, type Frontmatter, type Item, type ItemType, type LibraryEvent, type Status } from './types.ts';
@@ -271,6 +272,10 @@ export class Library extends EventEmitter {
       if (!item) return;
       this.git?.track(e.path, 'you', `edit “${item.title}” (external)`);
       this.emitEvent({ kind: known ? 'updated' : 'created', id: item.id, path: e.path, origin: 'disk' });
+      const memData = memoryEventData(item);
+      if (memData) {
+        this.emitEvent({ kind: 'memory', id: item.id, path: e.path, origin: 'disk', data: memData });
+      }
     } catch (err) {
       this.emit('error-log', err);
     }
