@@ -55,7 +55,8 @@ Memories add \`agent\` (who remembered it) and a \`memory\` proposal block (\`li
 1. Never change \`id\` or \`created\`. Update \`updated\` when you edit.
 2. Don't overwrite the owner's notes. Append, or propose changes.
 3. Prefer the MCP \`remember\` tool to propose new atomic facts; it writes \`memories/<slug>.md\` with \`status: inbox\` and \`memory.lifecycle: proposed\` so the owner can approve it before \`recall\` or \`get_context\` surfaces it.
-4. Every change is auto-committed to git with its author, so the owner can review and revert.
+4. Keep general or owner-level facts unscoped (omit \`project\` on \`remember\`). For project-scoped facts, call \`list_projects\` (or \`search\`) first to find an existing project slug; only call \`create_project\` when the work genuinely belongs to an ongoing project or repo that does not exist yet, then pass its returned \`slug\` to \`remember(project: ...)\`.
+5. Every change is auto-committed to git with its author, so the owner can review and revert.
 `;
 }
 
