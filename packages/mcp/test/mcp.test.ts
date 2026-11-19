@@ -43,11 +43,13 @@ describe('MCP tools (in-memory client)', () => {
     const { client } = await memoryClient();
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(tools).toEqual(
-      ['add_to_project', 'capture', 'create_note', 'get_backlinks', 'get_context', 'get_graph', 'get_item', 'link_items', 'list_projects', 'list_recent', 'recall', 'remember', 'search', 'update_note'].sort(),
+      ['add_to_project', 'capture', 'create_note', 'create_project', 'get_backlinks', 'get_context', 'get_graph', 'get_item', 'link_items', 'list_projects', 'list_recent', 'recall', 'remember', 'search', 'update_note'].sort(),
     );
     const templates = (await client.listResourceTemplates()).resourceTemplates.map((r) => r.uriTemplate);
     expect(templates).toContain('cabinet://item/{id}');
     expect(client.getInstructions()).toMatch(/personal library/);
+    expect(client.getInstructions()).toMatch(/list_projects/);
+    expect(client.getInstructions()).toMatch(/create_project/);
   });
 
   test('read tools: search, get_item, get_context, backlinks, graph, projects, recent', async () => {
@@ -161,6 +163,122 @@ describe('MCP tools (in-memory client)', () => {
     expect(m3.outcome).toBe('proposed');
     expect(lib2.read(m3.id).frontmatter.memory?.project_ids).toBeUndefined();
   });
+
+  test('create_project creates a project with expected frontmatter/body, rejects blank titles, is idempotent, and integrates with remember and add_to_project', async () => {
+    const t = tempSample();
+    const lib = await Library.open(t.dir, { git: true, debounceMs: 50 });
+    const changed: string[] = [];
+    const server = createCabinetMcpServer({ lib: () => lib, agent: 'tester', onChanged: (id) => changed.push(id) });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '1' });
+    await client.connect(b);
+    cleanups.push(t.cleanup, () => lib.close(), () => client.close());
+
+    // Whitespace-only title is rejected
+    const blank = await client.callTool({ name: 'create_project', arguments: { title: '   ' } });
+    expect(blank.isError).toBe(true);
+
+    // Create a full project with kind, intent, tags, and notes
+    const created = parse(
+      await client.callTool({
+        name: 'create_project',
+        arguments: {
+          title: '  Home Lab  ',
+          kind: 'build',
+          intent: '  Self-hosted services and backups  ',
+          tags: ['infra', 'linux'],
+          notes: 'Start with a small N100 box.',
+        },
+      }),
+    );
+    expect(created).toMatchObject({
+      created: true,
+      duplicate: false,
+      slug: 'home-lab',
+      title: 'Home Lab',
+      path: 'projects/home-lab.md',
+    });
+    expect(created.hash).toMatch(/^[0-9a-f]{40}$/);
+    expect(changed).toContain(created.id);
+    expect(existsSync(join(t.dir, 'projects/home-lab.md'))).toBe(true);
+
+    const item = lib.read(created.id);
+    expect(item.type).toBe('project');
+    expect(item.status).toBe('library');
+    expect(item.frontmatter.project_status).toBe('active');
+    expect(item.frontmatter.view).toBe('cards');
+    expect(item.frontmatter.kind).toBe('build');
+    expect(item.frontmatter.intent).toBe('Self-hosted services and backups');
+    expect(item.frontmatter.captured_via).toBe('mcp:tester');
+    expect(item.tags).toEqual(['infra', 'linux']);
+    expect(item.body).toBe('## Material\n\n## Notes\n\nStart with a small N100 box.\n');
+
+    // Minimal project without optional fields omits kind/intent and has only ## Material
+    const minimal = parse(await client.callTool({ name: 'create_project', arguments: { title: 'Tiny Desk' } }));
+    expect(minimal).toMatchObject({ created: true, duplicate: false, slug: 'tiny-desk', path: 'projects/tiny-desk.md' });
+    const minimalItem = lib.read(minimal.id);
+    expect(minimalItem.frontmatter.project_status).toBe('active');
+    expect(minimalItem.frontmatter.view).toBe('cards');
+    expect(minimalItem.frontmatter.kind).toBeUndefined();
+    expect(minimalItem.frontmatter.intent).toBeUndefined();
+    expect(minimalItem.body).toBe('## Material\n');
+
+    // Idempotent duplicate guard: matching by title, different casing/spacing, or slug
+    const changedBeforeDup = changed.length;
+    const dupByTitle = parse(await client.callTool({ name: 'create_project', arguments: { title: 'Home Lab' } }));
+    expect(dupByTitle).toEqual({
+      created: false,
+      duplicate: true,
+      id: created.id,
+      slug: created.slug,
+      title: created.title,
+      path: created.path,
+      hash: created.hash,
+    });
+    const dupByCase = parse(await client.callTool({ name: 'create_project', arguments: { title: '  home lab ' } }));
+    expect(dupByCase).toMatchObject({ created: false, duplicate: true, id: created.id, slug: 'home-lab' });
+    const dupBySlug = parse(await client.callTool({ name: 'create_project', arguments: { title: 'reading-corner' } }));
+    const existingCorner = lib.find('reading-corner')!;
+    expect(dupBySlug).toEqual({
+      created: false,
+      duplicate: true,
+      id: existingCorner.id,
+      slug: existingCorner.slug,
+      title: existingCorner.title,
+      path: existingCorner.path,
+      hash: existingCorner.hash,
+    });
+    expect(existsSync(join(t.dir, 'projects/home-lab-2.md'))).toBe(false);
+    expect(existsSync(join(t.dir, 'projects/reading-corner-2.md'))).toBe(false);
+    expect(changed.length).toBe(changedBeforeDup);
+
+    // End-to-end: remember(project: slug) attaches project_ids and add_to_project works immediately
+    const mem = parse(
+      await client.callTool({
+        name: 'remember',
+        arguments: { fact: 'Home Lab runs Proxmox on an N100 mini PC.', project: created.slug },
+      }),
+    );
+    expect(mem).toMatchObject({ outcome: 'proposed', remembered: false, status: 'proposed' });
+    expect(lib.read(mem.id).frontmatter.memory?.project_ids).toEqual([created.id]);
+
+    const note = parse(await client.callTool({ name: 'create_note', arguments: { title: 'Backup plan', body: 'Nightly restic snapshots.' } }));
+    const added = parse(
+      await client.callTool({
+        name: 'add_to_project',
+        arguments: { project: created.slug, item: note.slug, section: 'Storage', context: 'offsite backups' },
+      }),
+    );
+    expect(added).toEqual({ project: 'home-lab', item: note.slug, section: 'Storage', added: true });
+    expect(lib.read(created.id).body).toContain(`### Storage\n- [[${note.slug}]]: offsite backups`);
+
+    // Verify git attribution for project creation
+    await lib.close();
+    const log = await simpleGit(t.dir).log({ file: 'projects/home-lab.md' });
+    expect(log.all.length).toBeGreaterThan(0);
+    expect(log.all.some((c) => c.author_name === 'agent:tester' && `${c.message}\n${c.body}`.includes('Home Lab'))).toBe(true);
+  });
 });
 
 describe('real MCP clients', () => {
@@ -175,7 +293,7 @@ describe('real MCP clients', () => {
     const client = new Client({ name: 'stdio-test', version: '1' });
     await client.connect(transport);
     const tools = await client.listTools();
-    expect(tools.tools.length).toBe(14);
+    expect(tools.tools.length).toBe(15);
     const ctx = parse(await client.callTool({ name: 'get_context', arguments: { topic: 'sourdough' } }));
     expect(ctx).toMatch(/Sourdough/);
     const mem = parse(await client.callTool({ name: 'remember', arguments: { fact: 'Bakes on Sundays.' } }));

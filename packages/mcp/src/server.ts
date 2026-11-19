@@ -3,10 +3,12 @@ import { z } from 'zod';
 import {
   ConflictError,
   ITEM_TYPES,
+  PROJECT_KINDS,
   getSection,
   isActiveMemory,
   parseProject,
   proposeMemory,
+  slugify,
   splitNotesAndContent,
   type Item,
   type ItemSummary,
@@ -54,6 +56,7 @@ export const INSTRUCTIONS = `Cabinet is the owner's personal library: notes, sav
 Use it as long-term memory and context:
 - Before answering questions about the owner's interests, projects or past saves, call get_context (or search + get_item).
 - When you learn a durable fact about the owner or their work, call remember to propose a durable fact; the owner approves it before it becomes memory. Use recall to look facts up.
+- Keep general or owner-level facts unscoped (omit project on remember). For project-scoped facts, call list_projects (or search) first to find an existing project slug. Only call create_project when the work genuinely belongs to an ongoing project or repo that does not exist yet, then pass its returned slug to remember(project: ...).
 - Save useful links or text with capture; write longer thinking with create_note.
 - Reference items as [[slug]] inside note bodies to link them.
 - update_note needs the base_hash from get_item so you never overwrite edits made elsewhere.
@@ -298,7 +301,8 @@ export function createCabinetMcpServer(deps: McpDeps): McpServer {
     'remember',
     {
       title: 'Remember a fact',
-      description: 'Propose a short, durable fact (one or two sentences) for the owner to approve. It is not recallable until approved. Include thread_id and project when you know them. Recall first to avoid duplicates.',
+      description:
+        'Propose a short, durable fact (one or two sentences) for the owner to approve. It is not recallable until approved. Omit project for general/owner-level facts; for project-scoped facts, call list_projects (or search) first to find an existing slug, or create_project only if it belongs to an ongoing project/repo that does not exist yet. Include thread_id when you know it, and recall first to avoid duplicates.',
       inputSchema: {
         fact: z.string().min(3),
         title: z.string().optional(),
@@ -388,6 +392,77 @@ export function createCabinetMcpServer(deps: McpDeps): McpServer {
       deps.onChanged?.(item.id);
       const lib = L();
       return json({ id: item.id, slug: item.slug, path: item.path, hash: item.hash, unresolved_links: lib.index.outgoing(item.id).filter((o) => !o.targetId).map((o) => o.target) });
+    }),
+  );
+
+  server.registerTool(
+    'create_project',
+    {
+      title: 'Create a project',
+      description:
+        'Create a new project in projects/<slug>.md. Call list_projects (or search) first to avoid duplicates; only create a project when work or facts genuinely belong to an ongoing project or repo that does not exist yet (keep general/owner-level facts unscoped). Idempotent: returns the existing project with duplicate: true if one already matches. Pass the returned slug to remember(project: ...) or add_to_project.',
+      inputSchema: {
+        title: z.string().min(1),
+        kind: z.enum(PROJECT_KINDS).optional(),
+        intent: z.string().optional().describe('Short summary of what the project is about'),
+        tags: z.array(z.string()).optional(),
+        notes: z.string().optional().describe('Optional initial ## Notes content'),
+      },
+    },
+    guard(async ({ title, kind, intent, tags, notes }: { title: string; kind?: (typeof PROJECT_KINDS)[number]; intent?: string; tags?: string[]; notes?: string }) => {
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) return fail('Project title must not be empty.');
+      const lib = L();
+      const slug = slugify(trimmedTitle);
+      const byRef = [lib.find(trimmedTitle), lib.find(slug)].find((it): it is Item => it?.type === 'project');
+      const existing =
+        byRef ??
+        (() => {
+          const lowerTitle = trimmedTitle.toLowerCase();
+          const match = lib.index
+            .list({ type: 'project', limit: 1000 })
+            .items.find((p) => p.slug === slug || p.title.trim().toLowerCase() === lowerTitle);
+          return match ? lib.read(match.id) : undefined;
+        })();
+      if (existing) {
+        return json({
+          created: false,
+          duplicate: true,
+          id: existing.id,
+          slug: existing.slug,
+          title: existing.title,
+          path: existing.path,
+          hash: existing.hash,
+        });
+      }
+      const trimmedIntent = intent?.trim() || undefined;
+      const trimmedNotes = notes?.trim() || undefined;
+      const item = lib.create(
+        {
+          type: 'project',
+          title: trimmedTitle,
+          tags,
+          captured_via: via,
+          frontmatter: {
+            project_status: 'active',
+            view: 'cards',
+            ...(kind ? { kind } : {}),
+            ...(trimmedIntent ? { intent: trimmedIntent } : {}),
+          },
+          body: trimmedNotes ? `## Material\n\n## Notes\n\n${trimmedNotes}\n` : '## Material\n',
+        },
+        author,
+      );
+      deps.onChanged?.(item.id);
+      return json({
+        created: true,
+        duplicate: false,
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        path: item.path,
+        hash: item.hash,
+      });
     }),
   );
 

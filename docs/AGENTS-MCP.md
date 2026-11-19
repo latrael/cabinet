@@ -76,10 +76,11 @@ The HTTP endpoint is stateless (a fresh MCP session per request) and always requ
 | `get_graph` | The neighbourhood of an item, 1–3 hops. |
 | `capture` | Save a URL or text (quote/text/note) to the inbox, or straight into a project. URLs are fetched in the background. |
 | `create_note` | Write a note; reports any `[[links]]` that don't resolve yet. |
+| `create_project` | Create a project in `projects/<slug>.md` with optional `kind`, `intent`, `tags`, and initial `notes`. Idempotent: returns `{ created: false, duplicate: true, … }` if a matching project already exists. Call `list_projects` (or `search`) first and only create when genuinely starting a new ongoing project or repo. |
 | `update_note` | Replace the body (needs `base_hash` from `get_item`; refused if the file changed since) or `append` text. |
 | `link_items` | Add `[[target]]` to an item's `## Related` list with an optional note. |
 | `add_to_project` | Reference an item in a project's `## Material`, in a section, with context. |
-| `remember` | Propose a short durable fact in `memories/` (`status: inbox`, `memory.lifecycle: proposed`) with optional `thread_id`, `project`, and `sources` (`{ item?, url?, quote? }`). Returns `{ outcome: "proposed", remembered: false, id, slug, path, status: "proposed" }`. Not returned by `recall` or `get_context` until approved by the owner. |
+| `remember` | Propose a short durable fact in `memories/` (`status: inbox`, `memory.lifecycle: proposed`) with optional `thread_id`, `project`, and `sources` (`{ item?, url?, quote? }`). Returns `{ outcome: "proposed", remembered: false, id, slug, path, status: "proposed" }`. Omit `project` for general/owner-level facts; look up existing projects before creating one. Not returned by `recall` or `get_context` until approved by the owner. |
 | `recall` | Search approved memories. |
 
 ### Memory proposal flow
@@ -87,6 +88,10 @@ The HTTP endpoint is stateless (a fresh MCP session per request) and always requ
 Calling `remember` always creates a memory **proposal** rather than a live memory:
 - The file is written to `memories/<slug>.md` with `status: inbox`, `agent: <name>`, `captured_via: mcp:<name>`, and a `memory` frontmatter block (`lifecycle: proposed`, `proposed_by`, `proposed_at`, and optional `thread_id`, `project_ids`, `sources`).
 - Proposals are excluded from `recall` and `get_context` until the owner approves them (via `POST /api/memory/proposals/:id/approve` or the HTTP review API). Approving moves `status` to `library` and `memory.lifecycle` to `active`; rejecting moves `status` to `archived` and `memory.lifecycle` to `rejected`.
+- Scoping rules to avoid project sprawl:
+  - Keep general or owner-level facts unscoped (omit `project` on `remember`).
+  - For project-scoped facts, call `list_projects` (or `search`) first to find an existing project slug.
+  - Only call `create_project` when the work or fact genuinely belongs to an ongoing project or repo that does not exist yet, then pass its returned `slug` to `remember(project: ...)`.
 - Harnesses can supply attribution defaults automatically: over HTTP `/mcp` via `X-Cabinet-Thread` and `X-Cabinet-Project` headers, or over stdio via `--thread`/`--project` flags (or `CABINET_THREAD_ID` / `CABINET_PROJECT` env vars). Explicit `thread_id` / `project` arguments to `remember` override those defaults.
 
 Every item is also an MCP resource at `cabinet://item/{id}` (Markdown).
