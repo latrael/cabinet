@@ -1,8 +1,29 @@
 import { nowIso } from './ids.ts';
 import { NotFoundError, type Library } from './library.ts';
-import type { Author, Item, LibraryEvent, MemoryFrontmatter, MemoryLifecycle, MemorySource, Status } from './types.ts';
+import type { Author, Item, ItemSummary, LibraryEvent, MemoryFrontmatter, MemoryLifecycle, MemorySource, Status } from './types.ts';
 
 export type ProposalStatus = 'proposed' | 'approved' | 'rejected';
+
+export interface ProjectSuggestion {
+  id: string;
+  slug: string;
+  title: string;
+  intent?: string;
+}
+
+export class UnknownProjectError extends Error {
+  query: string;
+  suggestions: ProjectSuggestion[];
+  constructor(query: string, suggestions: ProjectSuggestion[] = []) {
+    const message = suggestions.length
+      ? `No exact project matched "${query}". Closest existing projects: ${suggestions.map((s) => `${s.slug} (${s.title})`).join(', ')}. Reuse one of these slugs, omit \`project\` for a general/owner-level memory, or create a new project first with \`create_project\`.`
+      : `No project matched "${query}". Check \`list_projects\`, call \`create_project\` if this is a genuinely new ongoing project, or omit \`project\` for a general/owner-level memory.`;
+    super(message);
+    this.query = query;
+    this.suggestions = suggestions;
+    this.name = 'UnknownProjectError';
+  }
+}
 
 export interface Proposal {
   id: string;
@@ -164,6 +185,167 @@ function emitMemoryEvent(lib: Library, item: Item, proposal: Proposal, origin: '
   lib.emit('event', evt);
 }
 
+const QUERY_STOPWORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'from',
+  'in', 'into', 'is', 'it', 'its', 'me', 'my', 'no', 'not', 'of', 'on',
+  'or', 'our', 'so', 'that', 'the', 'their', 'this', 'to', 'with', 'you', 'your',
+]);
+
+function normalizeText(value: string): string {
+  return value
+    .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2')
+    .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function compactText(value: string): string {
+  return normalizeText(value).replace(/\s+/g, '');
+}
+
+function scoreProjectSummary(
+  summary: ItemSummary,
+  queryNorm: string,
+  queryCompact: string,
+  tokens: string[],
+): number {
+  const slugNorm = normalizeText(summary.slug);
+  const titleNorm = normalizeText(summary.title);
+  const slugCompact = slugNorm.replace(/\s+/g, '');
+  const titleCompact = titleNorm.replace(/\s+/g, '');
+  const slugTitleTokens = new Set([...slugNorm.split(' '), ...titleNorm.split(' ')].filter(Boolean));
+  const tagTokens = new Set(summary.tags.flatMap((t) => normalizeText(t).split(' ')).filter(Boolean));
+  const excerptNorm = summary.excerpt ? normalizeText(summary.excerpt) : '';
+  const excerptTokens = new Set(excerptNorm ? excerptNorm.split(' ').filter(Boolean) : []);
+
+  let score = 0;
+
+  if (queryNorm && (slugNorm === queryNorm || titleNorm === queryNorm)) {
+    score += 100;
+  } else if (queryCompact && (slugCompact === queryCompact || titleCompact === queryCompact)) {
+    score += 100;
+  } else if (queryCompact.length >= 3) {
+    if (slugCompact.includes(queryCompact) || titleCompact.includes(queryCompact)) {
+      score += 60;
+    } else if (
+      (slugCompact.length >= 3 && queryCompact.includes(slugCompact)) ||
+      (titleCompact.length >= 3 && queryCompact.includes(titleCompact))
+    ) {
+      score += 55;
+    } else if (queryNorm.length >= 3 && (slugNorm.includes(queryNorm) || titleNorm.includes(queryNorm))) {
+      score += 50;
+    }
+  }
+
+  for (const token of tokens) {
+    if (slugTitleTokens.has(token)) {
+      score += 25;
+      continue;
+    }
+    if (token.length >= 3 && (slugCompact.includes(token) || titleCompact.includes(token))) {
+      score += 15;
+      continue;
+    }
+    if (token.length >= 4) {
+      let reverseMatched = false;
+      for (const candidateToken of slugTitleTokens) {
+        if (candidateToken.length >= 3 && token.includes(candidateToken)) {
+          reverseMatched = true;
+          break;
+        }
+      }
+      if (reverseMatched) {
+        score += 12;
+        continue;
+      }
+    }
+    if (tagTokens.has(token)) {
+      score += 10;
+      continue;
+    }
+    if (token.length >= 3 && excerptTokens.has(token)) {
+      score += 6;
+      continue;
+    }
+    if (token.length >= 4) {
+      for (const excerptToken of excerptTokens) {
+        if (excerptToken.startsWith(token)) {
+          score += 4;
+          break;
+        }
+      }
+    }
+  }
+
+  return score;
+}
+
+function projectIntent(lib: Library, summary: ItemSummary): string | undefined {
+  try {
+    const item = lib.read(summary.id);
+    const fmIntent = asStr(item.frontmatter.intent);
+    if (fmIntent) return fmIntent;
+  } catch {
+    // Fall back to summary excerpt if file cannot be read
+  }
+  return summary.excerpt?.trim() || undefined;
+}
+
+export function suggestProjects(lib: Library, query: string, limit = 5): ProjectSuggestion[] {
+  const trimmed = query.trim();
+  const cap = Math.max(0, Math.floor(limit));
+  if (!trimmed || cap === 0) return [];
+
+  const queryNorm = normalizeText(trimmed);
+  const queryCompact = compactText(trimmed);
+  const rawTokens = queryNorm ? queryNorm.split(' ').filter(Boolean) : [];
+  const tokens = [...new Set(rawTokens.filter((t) => t.length >= 2 && !QUERY_STOPWORDS.has(t)))];
+
+  const candidates = new Map<string, { summary: ItemSummary; score: number }>();
+
+  for (const hit of lib.index.search(trimmed, { type: 'project', limit: cap })) {
+    if (hit.item.type !== 'project') continue;
+    const ftsScore = (Number.isFinite(hit.score) && hit.score > 0 ? hit.score : 1) + 20;
+    const prev = candidates.get(hit.item.id);
+    candidates.set(hit.item.id, {
+      summary: hit.item,
+      score: prev ? Math.max(prev.score, ftsScore) : ftsScore,
+    });
+  }
+
+  for (const summary of lib.index.list({ type: 'project', limit: 200 }).items) {
+    if (summary.type !== 'project') continue;
+    const fuzzyScore = scoreProjectSummary(summary, queryNorm, queryCompact, tokens);
+    if (fuzzyScore <= 0) continue;
+    const prev = candidates.get(summary.id);
+    candidates.set(summary.id, {
+      summary: prev?.summary ?? summary,
+      score: (prev?.score ?? 0) + fuzzyScore,
+    });
+  }
+
+  return [...candidates.values()]
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const titleCmp = a.summary.title.localeCompare(b.summary.title);
+      return titleCmp !== 0 ? titleCmp : a.summary.id.localeCompare(b.summary.id);
+    })
+    .slice(0, cap)
+    .map(({ summary }) => {
+      const intent = projectIntent(lib, summary);
+      return {
+        id: summary.id,
+        slug: summary.slug,
+        title: summary.title,
+        ...(intent ? { intent } : {}),
+      };
+    });
+}
+
 export function isActiveMemory(item: Item): boolean {
   if (item.type !== 'memory') return false;
   const m = rawMemoryObj(item);
@@ -189,9 +371,10 @@ export function proposeMemory(lib: Library, input: ProposeMemoryInput, author: A
 
   const projectIds: string[] = [];
   if (input.project !== undefined && input.project.trim() !== '') {
-    const proj = lib.find(input.project.trim());
+    const projectQuery = input.project.trim();
+    const proj = lib.find(projectQuery);
     if (!proj || proj.type !== 'project') {
-      throw new Error(`Not a project: ${input.project}`);
+      throw new UnknownProjectError(projectQuery, suggestProjects(lib, projectQuery));
     }
     projectIds.push(proj.id);
   }

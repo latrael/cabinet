@@ -7,6 +7,7 @@ import {
   ConflictError,
   Library,
   NotFoundError,
+  UnknownProjectError,
   approveProposal,
   getProposal,
   isActiveMemory,
@@ -15,7 +16,9 @@ import {
   proposeMemory,
   rejectProposal,
   serializeMarkdown,
+  suggestProjects,
   type LibraryEvent,
+  type ProjectSuggestion,
 } from '../src/index.ts';
 import { tempSample, waitFor } from './helpers.ts';
 
@@ -83,10 +86,10 @@ describe('memory proposals (core)', () => {
     expect(item.frontmatter.memory?.schema_version).toBe(1);
     expect(isActiveMemory(item)).toBe(false);
 
-    // Non-project or unknown project throws
-    const note = lib.find('warm-light')!;
-    expect(() => proposeMemory(lib, { fact: 'Some fact', project: note.slug, agent: 'x' }, 'agent:x')).toThrow(/Not a project/);
-    expect(() => proposeMemory(lib, { fact: 'Some fact', project: 'no-such-project', agent: 'x' }, 'agent:x')).toThrow(/Not a project/);
+    // Non-project or unknown project throws UnknownProjectError
+    const nonProject = lib.find('warm-light')!;
+    expect(() => proposeMemory(lib, { fact: 'Some fact', project: nonProject.slug, agent: 'x' }, 'agent:x')).toThrow(UnknownProjectError);
+    expect(() => proposeMemory(lib, { fact: 'Some fact', project: 'no-such-project', agent: 'x' }, 'agent:x')).toThrow(UnknownProjectError);
   });
 
   test('listProposals filters by status/project/thread/agent, excludes legacy memories, and proposalCounts aggregates', async () => {
@@ -246,5 +249,167 @@ describe('memory proposals (core)', () => {
     expect(proposeCommit).toBeTruthy();
     expect(approveCommit).toBeTruthy();
     expect(readFileSync(join(lib.root, p.path), 'utf8')).toContain('lifecycle: active');
+  });
+
+  test('proposeMemory throws UnknownProjectError with fuzzy suggestions and actionable guidance', async () => {
+    const lib = await openSample();
+    const nabilProj = lib.create({
+      type: 'project',
+      slug: 'nabilincdotxyz',
+      title: 'nabilinc.xyz',
+      frontmatter: { intent: 'Personal website and portfolio for Nabil.' },
+    });
+    const projectCountBefore = lib.index.list({ type: 'project', limit: 200 }).total;
+
+    // Partial slug match ("reading" -> "reading-corner")
+    let partialErr: unknown;
+    try {
+      proposeMemory(lib, { fact: 'Prefers floor lamps.', project: '  reading  ', agent: 'claude' }, 'agent:claude');
+    } catch (e) {
+      partialErr = e;
+    }
+    expect(partialErr).toBeInstanceOf(Error);
+    expect(partialErr).toBeInstanceOf(UnknownProjectError);
+    const err1 = partialErr as UnknownProjectError;
+    expect(err1.name).toBe('UnknownProjectError');
+    expect(err1.query).toBe('reading');
+    expect(err1.suggestions.map((s) => s.slug)).toContain('reading-corner');
+    expect(err1.suggestions[0]).toMatchObject({
+      slug: 'reading-corner',
+      title: 'Reading corner',
+      intent: 'A calm corner by the window for reading in the evening: warm light, soft sound, no screens.',
+    });
+    expect(err1.message).toContain('No exact project matched "reading"');
+    expect(err1.message).toContain('reading-corner (Reading corner)');
+    expect(err1.message).toContain('create_project');
+    expect(err1.message).toContain('omit `project`');
+
+    // Token/substring mismatch ("nabil-site" -> "nabilincdotxyz")
+    let tokenErr: unknown;
+    try {
+      proposeMemory(lib, { fact: 'Site uses custom serif typography.', project: 'nabil-site', agent: 'claude' }, 'agent:claude');
+    } catch (e) {
+      tokenErr = e;
+    }
+    expect(tokenErr).toBeInstanceOf(UnknownProjectError);
+    const err2 = tokenErr as UnknownProjectError;
+    expect(err2.query).toBe('nabil-site');
+    expect(err2.suggestions.map((s) => s.id)).toContain(nabilProj.id);
+    expect(err2.message).toContain('nabilincdotxyz (nabilinc.xyz)');
+
+    // Never auto-creates projects
+    expect(lib.index.list({ type: 'project', limit: 200 }).total).toBe(projectCountBefore);
+  });
+
+  test('proposeMemory rejects non-project refs (note, article, collection, memory) and only suggests projects', async () => {
+    const lib = await openSample();
+    const note = lib.create({ type: 'note', slug: 'sourdough-starter-note', title: 'Sourdough starter note', body: 'Feed daily.\n' });
+    const article = lib.find('japanese-listening-rooms')!;
+    const collection = lib.find('listening-rooms')!;
+    const memory = lib.find('prefers-warm-light')!;
+
+    expect(note.type).toBe('note');
+    expect(article.type).toBe('article');
+    expect(collection.type).toBe('collection');
+    expect(memory.type).toBe('memory');
+
+    for (const [ref, expectedProjectSlug] of [
+      [note.slug, 'sourdough'],
+      [article.slug, 'listening-rooms-essay'],
+      [collection.slug, 'listening-rooms-essay'],
+    ] as const) {
+      let caught: unknown;
+      try {
+        proposeMemory(lib, { fact: 'Test fact.', project: ref, agent: 'claude' }, 'agent:claude');
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(UnknownProjectError);
+      const err = caught as UnknownProjectError;
+      expect(err.query).toBe(ref);
+      expect(err.suggestions.map((s) => s.slug)).toContain(expectedProjectSlug);
+      for (const s of err.suggestions) {
+        expect(lib.read(s.id).type).toBe('project');
+      }
+      expect(err.suggestions.map((s) => s.id)).not.toContain(note.id);
+      expect(err.suggestions.map((s) => s.id)).not.toContain(article.id);
+      expect(err.suggestions.map((s) => s.id)).not.toContain(collection.id);
+      expect(err.suggestions.map((s) => s.id)).not.toContain(memory.id);
+    }
+
+    // Memory ref also throws UnknownProjectError and never suggests memories
+    let memErr: unknown;
+    try {
+      proposeMemory(lib, { fact: 'Test fact.', project: memory.slug, agent: 'claude' }, 'agent:claude');
+    } catch (e) {
+      memErr = e;
+    }
+    expect(memErr).toBeInstanceOf(UnknownProjectError);
+    for (const s of (memErr as UnknownProjectError).suggestions) {
+      expect(lib.read(s.id).type).toBe('project');
+    }
+  });
+
+  test('proposeMemory zero-match UnknownProjectError guides to list_projects, create_project, or omitting project', async () => {
+    const lib = await openSample();
+    let caught: unknown;
+    try {
+      proposeMemory(lib, { fact: 'Completely unrelated fact.', project: 'quantum-teleporter-v9', agent: 'claude' }, 'agent:claude');
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(UnknownProjectError);
+    const err = caught as UnknownProjectError;
+    expect(err.query).toBe('quantum-teleporter-v9');
+    expect(err.suggestions).toEqual([]);
+    expect(err.message).toContain('No project matched "quantum-teleporter-v9"');
+    expect(err.message).toContain('list_projects');
+    expect(err.message).toContain('create_project');
+    expect(err.message).toContain('omit `project`');
+  });
+
+  test('suggestProjects deduplicates, enforces limit, normalizes tokens, and excludes non-projects', async () => {
+    const lib = await openSample();
+
+    // Empty / whitespace / zero limit return []
+    expect(suggestProjects(lib, '')).toEqual([]);
+    expect(suggestProjects(lib, '   ')).toEqual([]);
+    expect(suggestProjects(lib, 'reading', 0)).toEqual([]);
+
+    // Normalized / camelCase / compact matching + intent field handling
+    const compactMatches: ProjectSuggestion[] = suggestProjects(lib, 'ReadingCorner');
+    expect(compactMatches.map((s) => s.slug)).toEqual(['reading-corner']);
+    expect(compactMatches[0].intent).toBe('A calm corner by the window for reading in the evening: warm light, soft sound, no screens.');
+
+    // Project without intent omits undefined intent key cleanly
+    const bareProject = lib.create({ type: 'project', slug: 'alpha-bare', title: 'Alpha bare' });
+    const bareMatches = suggestProjects(lib, 'alpha-bare');
+    expect(bareMatches).toEqual([{ id: bareProject.id, slug: 'alpha-bare', title: 'Alpha bare' }]);
+    expect('intent' in bareMatches[0]).toBe(false);
+
+    // Create 7 matching projects and a matching note/article to verify dedup, cap, and type filtering
+    for (let i = 1; i <= 7; i++) {
+      lib.create({
+        type: 'project',
+        slug: `synth-lab-${i}`,
+        title: `Synth Lab ${i}`,
+        frontmatter: { intent: `Analog synth experiment ${i}` },
+      });
+    }
+    const nonProjNote = lib.create({ type: 'note', slug: 'synth-lab', title: 'Synth Lab' });
+    const nonProjArticle = lib.create({ type: 'article', slug: 'synth-lab-guide', title: 'Synth Lab Guide' });
+
+    const defaultTop = suggestProjects(lib, 'synth lab');
+    expect(defaultTop).toHaveLength(5);
+    expect(new Set(defaultTop.map((s) => s.id)).size).toBe(5);
+    for (const s of defaultTop) {
+      expect(lib.read(s.id).type).toBe('project');
+      expect(s.id).not.toBe(nonProjNote.id);
+      expect(s.id).not.toBe(nonProjArticle.id);
+    }
+
+    const cappedTop = suggestProjects(lib, 'synth lab', 3);
+    expect(cappedTop).toHaveLength(3);
+    expect(new Set(cappedTop.map((s) => s.id)).size).toBe(3);
   });
 });
