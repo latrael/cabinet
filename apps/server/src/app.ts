@@ -59,6 +59,9 @@ function errorResponse(c: Context, e: unknown) {
   if (e instanceof ConflictError) return c.json({ error: 'conflict', message: e.message, current: e.current }, 409);
   if (e instanceof NotFoundError) return c.json({ error: 'not_found', message: e.message }, 404);
   const msg = e instanceof Error ? e.message : String(e);
+  if (e instanceof Error && 'suggestions' in e && Array.isArray((e as { suggestions?: unknown }).suggestions)) {
+    return c.json({ error: 'bad_request', message: msg, suggestions: (e as { suggestions: unknown[] }).suggestions }, 400);
+  }
   return c.json({ error: 'bad_request', message: msg }, 400);
 }
 
@@ -214,12 +217,16 @@ export function createApp(ctx: ServerContext) {
       if (b.type === 'memory' && author.startsWith('agent:')) {
         const agent = author.slice('agent:'.length);
         const fact = String(b.body ?? '').trim() || String(b.title ?? '').trim();
+        const threadId = b.thread_id ?? b.threadId;
         const proposal = proposeMemory(
           ctx.lib,
           {
             fact,
             title: b.title,
             tags: b.tags,
+            project: typeof b.project === 'string' ? b.project : undefined,
+            threadId: typeof threadId === 'string' ? threadId : undefined,
+            sources: Array.isArray(b.sources) ? b.sources : undefined,
             capturedVia: b.captured_via ?? 'web',
             agent,
           },

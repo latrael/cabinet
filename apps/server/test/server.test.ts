@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { parseProject } from '@cabinet/core';
 import { mountHttp } from '@cabinet/mcp';
 import { startServer, type RunningServer } from '../src/server.ts';
@@ -320,6 +320,146 @@ describe('memory proposals API', () => {
 
     // Clean up so counts stay clean for later tests if needed
     await api(`/api/memory/proposals/${agentCreate.data.item.id}/reject`, { method: 'POST', json: { reason: 'cleanup' } });
+  });
+
+  test('POST /api/items memory proposal from agent forwards project, thread_id / threadId, and sources with hardening intact', async () => {
+    const tok = (await api('/api/settings/tokens', { method: 'POST', json: { name: 'http-project-agent' } })).data;
+    const authHeaders = { authorization: `Bearer ${tok.token}` };
+    const createdIds: string[] = [];
+
+    try {
+      const projRes = await api('/api/items', {
+        method: 'POST',
+        headers: authHeaders,
+        json: { type: 'project', title: 'Espresso Dial-In', body: 'Tracking grind and yield.\n' },
+      });
+      expect(projRes.status).toBe(201);
+      expect(projRes.data.item.type).toBe('project');
+      const proj = projRes.data.item;
+      createdIds.push(proj.id);
+
+      const warmLight = (await api('/api/items/warm-light')).data.item;
+
+      // snake_case thread_id, project by slug, sources, plus client overrides that must be ignored
+      const snakeRes = await api('/api/items', {
+        method: 'POST',
+        headers: authHeaders,
+        json: {
+          type: 'memory',
+          title: 'Preferred espresso ratio',
+          body: '1:2.2 yields sweeter shots for light roasts.',
+          project: proj.slug,
+          thread_id: 'thread-snake-1',
+          sources: [{ item: 'warm-light', url: 'https://example.com/espresso', quote: '1:2.2 ratio' }],
+          status: 'library',
+          frontmatter: { memory: { lifecycle: 'active', proposed_by: 'you' } },
+        },
+      });
+      expect(snakeRes.status).toBe(201);
+      const snakeItem = snakeRes.data.item;
+      createdIds.push(snakeItem.id);
+      expect(snakeItem.status).toBe('inbox');
+      expect(snakeItem.frontmatter.memory).toMatchObject({
+        lifecycle: 'proposed',
+        proposed_by: 'agent:http-project-agent',
+        project_ids: [proj.id],
+        thread_id: 'thread-snake-1',
+        sources: [{ item_id: warmLight.id, url: 'https://example.com/espresso', quote: '1:2.2 ratio' }],
+      });
+
+      const proposalRes = await api(`/api/memory/proposals/${snakeItem.id}`);
+      expect(proposalRes.status).toBe(200);
+      expect(proposalRes.data.proposal).toMatchObject({
+        status: 'proposed',
+        project_ids: [proj.id],
+        thread_id: 'thread-snake-1',
+        sources: [{ item_id: warmLight.id, url: 'https://example.com/espresso', quote: '1:2.2 ratio' }],
+      });
+
+      // camelCase threadId and project by id
+      const camelRes = await api('/api/items', {
+        method: 'POST',
+        headers: authHeaders,
+        json: {
+          type: 'memory',
+          title: 'Preferred brew temperature',
+          body: '93 C works best for washed Ethiopian beans.',
+          project: proj.id,
+          threadId: 'thread-camel-2',
+          status: 'library',
+          frontmatter: { memory: { lifecycle: 'active' } },
+        },
+      });
+      expect(camelRes.status).toBe(201);
+      const camelItem = camelRes.data.item;
+      createdIds.push(camelItem.id);
+      expect(camelItem.status).toBe('inbox');
+      expect(camelItem.frontmatter.memory).toMatchObject({
+        lifecycle: 'proposed',
+        proposed_by: 'agent:http-project-agent',
+        project_ids: [proj.id],
+        thread_id: 'thread-camel-2',
+      });
+    } finally {
+      for (const id of createdIds) {
+        await api(`/api/items/${id}`, { method: 'DELETE' });
+      }
+    }
+  });
+
+  test('POST /api/items memory proposal with unknown project returns 400 and does not create an item', async () => {
+    const tok = (await api('/api/settings/tokens', { method: 'POST', json: { name: 'http-bad-project-agent' } })).data;
+    const authHeaders = { authorization: `Bearer ${tok.token}` };
+
+    const beforeItems = (await api('/api/items?type=memory')).data.total;
+    const beforeCounts = (await api('/api/memory/proposals/counts')).data.total;
+
+    const bad = await api('/api/items', {
+      method: 'POST',
+      headers: authHeaders,
+      json: {
+        type: 'memory',
+        title: 'Orphan memory',
+        body: 'Should not be created.',
+        project: 'nonexistent-project-xyz',
+      },
+    });
+    expect(bad.status).toBe(400);
+    expect(bad.data.error).toBe('bad_request');
+    expect(bad.data.message).toContain('nonexistent-project-xyz');
+
+    expect((await api('/api/items?type=memory')).data.total).toBe(beforeItems);
+    expect((await api('/api/memory/proposals/counts')).data.total).toBe(beforeCounts);
+
+    // Structured suggestions on a thrown Error are forwarded in the 400 payload
+    const suggestions = [{ id: 'proj-1', slug: 'reading-corner', title: 'Reading corner' }];
+    const errWithSuggestions = Object.assign(new Error('Unknown project: readng-corner'), { suggestions });
+    const spy = vi.spyOn(srv.ctx.lib, 'find').mockImplementationOnce(() => {
+      throw errWithSuggestions;
+    });
+    try {
+      const withSuggestions = await api('/api/items', {
+        method: 'POST',
+        headers: authHeaders,
+        json: {
+          type: 'memory',
+          title: 'Typo project memory',
+          body: 'Should surface suggestions.',
+          project: 'readng-corner',
+        },
+      });
+      expect(withSuggestions.status).toBe(400);
+      expect(withSuggestions.data).toEqual({
+        error: 'bad_request',
+        message: 'Unknown project: readng-corner',
+        suggestions,
+      });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect((await api('/api/items?type=memory')).data.total).toBe(beforeItems);
+    expect((await api('/api/memory/proposals/counts')).data.total).toBe(beforeCounts);
   });
 
   test('/mcp with X-Cabinet-Thread / X-Cabinet-Project headers, explicit wins, unknown header project ignored', async () => {
